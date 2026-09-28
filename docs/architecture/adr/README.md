@@ -10,3 +10,4 @@ Accepted here means accepted for planning; it does not claim implementation. Dat
 | [0004](0004-asynchronous-lifecycle-and-storage.md) | Laravel owns asynchronous lifecycle and durable results |
 | [0005](0005-structured-findings.md) | Validate versioned findings and source evidence |
 | [0006](0006-local-topology-and-evolution.md) | Start with Compose and defer advanced capabilities |
+| [0007](0007-llm-provider-abstraction.md) | Keep provider details behind a platform-owned `LLMClient` interface |
