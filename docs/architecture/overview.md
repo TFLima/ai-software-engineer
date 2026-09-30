@@ -2,6 +2,8 @@
 
 Status: accepted Phase 0 design, 2026-09-28. All components and contracts below are planned, not implemented. See the [ADRs](adr/README.md) for rationale and the [backlog](../planning/mvp-0.1-backlog.md) for implementation gates.
 
+[B01 implementation contracts v1](../contracts/README.md) refine the planning targets below with exact envelopes, lifecycle rules and initial finite limits. Use them for implementation; the accepted architectural decisions remain unchanged.
+
 ## Scope and boundaries
 
 MVP 0.1 analyzes a bounded snapshot of a public GitHub repository and returns advisory technical findings with source evidence. It has one deterministic orchestration path around an LLM call, with no autonomous tool loop. Private repositories, code execution, repository writes, automated fixes, RAG, agent frameworks, multiple agents, and MCP are excluded.

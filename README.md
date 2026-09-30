@@ -26,6 +26,7 @@ Repository content is untrusted data. The platform will never build, install dep
 
 - [Architecture overview](docs/architecture/overview.md): boundaries, flow, contracts, data model, and security.
 - [Architecture decisions](docs/architecture/adr/README.md): accepted Phase 0 decisions and their tradeoffs.
+- [B01 implementation contracts](docs/contracts/README.md): versioned lifecycle, APIs, findings, limits and local access policy; documentation only.
 - [MVP 0.1 backlog](docs/planning/mvp-0.1-backlog.md): implementation sequence and acceptance criteria.
 - [Evolution roadmap](docs/planning/roadmap.md): incremental releases 0.1–0.7.
 
