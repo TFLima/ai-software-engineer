@@ -2,6 +2,8 @@
 
 Status: planned; no items below are implemented by Phase 0. P0 items are required for MVP acceptance; P1 is optional follow-up. IDs define dependencies rather than calendar estimates. The [overview](../architecture/overview.md) is the contract source and the [ADRs](../architecture/adr/README.md) record decisions.
 
+B01 documentation deliverables are complete in the [versioned implementation contracts](../contracts/README.md), including the acceptance comparison. Other items remain planned; no application/runtime implementation is claimed.
+
 | ID | Priority | Work item | Dependencies | Acceptance criteria |
 | --- | --- | --- | --- | --- |
 | B01 | P0 | Define minimum implementation contracts and policies | None | Specify analysis lifecycle and versioned findings schema, application API and internal request/result contracts with valid/invalid examples; set initial conservative finite archive/file/context/token/concurrency/time and attempt limits; agree loopback-only access scope |
