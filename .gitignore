@@ -1,1 +1,15 @@
 token.txt
+.env
+.env.*
+!.env.example
+**/vendor/
+**/node_modules/
+**/dist/
+**/.angular/
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+**/.phpunit.cache/
+**/bootstrap/cache/*.php
+**/storage/**/*.log
+compose.local.yaml

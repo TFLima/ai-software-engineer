@@ -2,7 +2,7 @@
 
 Status: planned; no items below are implemented by Phase 0. P0 items are required for MVP acceptance; P1 is optional follow-up. IDs define dependencies rather than calendar estimates. The [overview](../architecture/overview.md) is the contract source and the [ADRs](../architecture/adr/README.md) record decisions.
 
-B01 documentation deliverables are complete in the [versioned implementation contracts](../contracts/README.md), including the acceptance comparison. Other items remain planned; no application/runtime implementation is claimed.
+B01 documentation deliverables are complete in the [versioned implementation contracts](../contracts/README.md), including the acceptance comparison. B02 now has a [runtime bootstrap](../development/local-stack.md); its [validation record](../development/b02-validation.md) distinguishes executed checks from environment-blocked integration checks. B03–B14 remain planned.
 
 | ID | Priority | Work item | Dependencies | Acceptance criteria |
 | --- | --- | --- | --- | --- |
