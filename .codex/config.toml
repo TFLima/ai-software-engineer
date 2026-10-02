@@ -1,0 +1,13 @@
+# Project-local OpenAI Codex ADR roles.
+
+[agents.adr-analyzer]
+description = "Map project architecture and identify evidence-backed potential ADRs in two phases. Do not generate formal ADRs."
+config_file = "agents/adr-analyzer.toml"
+
+[agents.adr-generator]
+description = "Generate one formal MADR document from one potential ADR, preserving evidence and marking unknowns."
+config_file = "agents/adr-generator.toml"
+
+[agents.adr-linker]
+description = "Analyze and validate ADR relationships; update relationship metadata and preserve decision content."
+config_file = "agents/adr-linker.toml"
