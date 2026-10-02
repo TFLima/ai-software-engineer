@@ -31,9 +31,12 @@ config` or container inspection output containing environment values.
 
 Database name/user are `ai_software_engineer`; Laravel host/port settings are
 provided explicitly in Compose. Laravel uses the Predis PHP client for Redis. Both
-Laravel processes share the application image/code and environment. FastAPI receives no database credentials. No internal
-bearer secret is needed yet because the run endpoint is absent; authentication
-must be implemented with that endpoint in B04/B10 before any analysis execution.
+Laravel processes share the application image/code and environment. Only `api`
+defines the backend build; `worker` consumes `ai-software-engineer-backend:local`
+with `pull_policy: never`, avoiding concurrent exports of the same tag. Run the
+full-stack build/start command above before starting the worker on its own.
+FastAPI receives no database credentials. No internal bearer secret is needed yet
+because the run endpoint is absent; authentication must be implemented with that endpoint in B04/B10 before any analysis execution.
 
 ## URLs, topology and health
 
@@ -141,7 +144,7 @@ docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt --targe
 ```
 
 For Compose builds in that environment, use a local ignored `compose.local.yaml`
-override with `build.secrets: [proxy_ca]` on `frontend`, `api`, `worker`, `ai`, and
+override with `build.secrets: [proxy_ca]` on `frontend`, `api`, `ai`, and
 a top-level `secrets.proxy_ca.file` pointing to the CA bundle; pass it with
 `-f compose.yaml -f compose.local.yaml`. Normal local builds need no proxy secret.
 
@@ -153,10 +156,6 @@ Add these fields to the same local override:
 ```yaml
 services:
   api:
-    build:
-      args:
-        COMPOSER_INSTALL_MODE: source
-  worker:
     build:
       args:
         COMPOSER_INSTALL_MODE: source

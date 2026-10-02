@@ -61,10 +61,9 @@ services:
       test: [CMD, php, -r, "exit(@file_get_contents('http://127.0.0.1:8000/api/health') === false ? 1 : 0);"]
 
   worker:
+    # Built once by api; consume the local shared image without a registry pull.
     image: ai-software-engineer-backend:local
-    build:
-      context: ./services/backend
-      target: base
+    pull_policy: never
     environment: *laravel-environment
     # No jobs exist yet. Framework retries cannot allocate later domain attempts.
     command: [php, artisan, "queue:work", redis, "--sleep=3", "--tries=1", "--timeout=270"]

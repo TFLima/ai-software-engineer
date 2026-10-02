@@ -26,6 +26,37 @@ Validation date: 2026-10-02. Scope: infrastructure/bootstrap only; B03+ is absen
 All B02 acceptance criteria were demonstrated. The final stack is running with
 seven healthy services; no integration blocker remains.
 
+## Shared backend build correction
+
+The duplicate `api`/`worker` build definitions could export the same backend tag
+concurrently on Docker Desktop/Windows. `api` now owns the only backend build;
+`worker` keeps the same image tag with `pull_policy: never` and no build definition.
+Managed CA/source overrides apply only to actual builders, not the worker.
+
+Validation on Linux Docker Engine with Compose 2.40.3:
+
+- `docker compose config --quiet` passed; `docker compose build --print` contains
+  only `api`, `frontend` and `ai`, with one backend tag/export target.
+- `docker compose -f compose.yaml -f compose.local.yaml build` passed using the
+  documented managed CA/source override, with one backend export in its log.
+- After `docker compose down` (without volumes), the production backend tag was
+  removed while retaining its layers under a temporary validation alias.
+  `docker compose -f compose.yaml -f compose.local.yaml up --build -d --wait
+  --wait-timeout 180` then passed with the production tag initially absent and
+  one backend export. Build cache was retained; this was not a no-cache build.
+  The temporary alias was removed afterward; PostgreSQL data was preserved.
+- `docker compose up -d --wait --wait-timeout 180` and
+  `python3 scripts/verify-stack.py` passed; all seven services are healthy.
+- Container inspection confirmed API and worker use the same backend image ID,
+  and worker command remains `php artisan queue:work redis --sleep=3 --tries=1
+  --timeout=270`.
+- Resolved before/after Compose configurations differ only in removal of the
+  worker build and addition of its pull policy. Contracts, application sources,
+  health conditions, limits, security boundaries and runtime commands are unchanged.
+
+Docker Desktop/Windows itself was not available for this validation. The duplicate
+export target is removed from the Compose build graph on every platform.
+
 ## Environment recovery and bootstrap fixes
 
 The managed Docker daemon initially returned Docker Hub HTTP 429 for anonymous
