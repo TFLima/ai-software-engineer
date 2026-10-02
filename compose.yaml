@@ -33,7 +33,7 @@ services:
     mem_limit: 128m
     healthcheck:
       <<: *health
-      test: [CMD, wget, -q, -O, /dev/null, --header=Host:localhost:8080, http://127.0.0.1:8080/healthz]
+      test: [CMD, wget, -Y, "off", -q, -O, /dev/null, --header=Host:localhost:8080, http://127.0.0.1:8080/healthz]
 
   frontend:
     build: ./services/frontend
@@ -42,7 +42,7 @@ services:
     mem_limit: 128m
     healthcheck:
       <<: *health
-      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/healthz]
+      test: [CMD, wget, -Y, "off", -q, -O, /dev/null, http://127.0.0.1:8080/healthz]
 
   api:
     image: ai-software-engineer-backend:local

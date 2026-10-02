@@ -140,10 +140,37 @@ docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt --targe
 docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt --target test -t ai-software-engineer-ai-test services/ai
 ```
 
-For Compose builds in that environment, use a local ignored `compose.local.yaml` override with
-`build.secrets: [proxy_ca]` on `frontend`, `api`, `worker`, `ai`, and a top-level
-`secrets.proxy_ca.file` pointing to the CA bundle; pass it with `-f compose.yaml
--f compose.local.yaml`. Normal local builds need no proxy secret.
+For Compose builds in that environment, use a local ignored `compose.local.yaml`
+override with `build.secrets: [proxy_ca]` on `frontend`, `api`, `worker`, `ai`, and
+a top-level `secrets.proxy_ca.file` pointing to the CA bundle; pass it with
+`-f compose.yaml -f compose.local.yaml`. Normal local builds need no proxy secret.
+
+If the environment permits Git access to `github.com` but blocks Composer archive
+requests to `api.github.com`, explicitly select Composer's supported source mode
+instead of relying on an automatic fallback (disabled in newer Composer versions).
+Add these fields to the same local override:
+
+```yaml
+services:
+  api:
+    build:
+      args:
+        COMPOSER_INSTALL_MODE: source
+  worker:
+    build:
+      args:
+        COMPOSER_INSTALL_MODE: source
+```
+
+Then build with `docker compose -f compose.yaml -f compose.local.yaml build` and
+start with `docker compose up -d --wait --wait-timeout 180`. For a backend test-image
+build in that environment, add `--build-arg COMPOSER_INSTALL_MODE=source` alongside
+the `--secret` argument. Default builds use distribution archives. CA bundles and
+overrides are local build inputs, not committed credentials or runtime mounts.
+Laravel images discard Composer download caches and dependency Git metadata after
+installation; these are build artifacts, not application runtime requirements.
+Dockerfiles normalize source readability for unprivileged application processes,
+including when the checkout was created with a restrictive local umask.
 
 ## Stop and data
 

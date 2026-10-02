@@ -9,9 +9,13 @@ RUN --mount=type=secret,id=proxy_ca \
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 WORKDIR /app
 COPY . .
+ARG COMPOSER_INSTALL_MODE=dist
 RUN --mount=type=secret,id=proxy_ca \
     if [ -f /run/secrets/proxy_ca ]; then export COMPOSER_CAFILE=/run/secrets/proxy_ca GIT_SSL_CAINFO=/run/secrets/proxy_ca; fi; \
-    composer install --no-dev --no-interaction --prefer-dist \
+    chmod -R a+rX /app \
+    && composer install --no-dev --no-interaction --prefer-install="$COMPOSER_INSTALL_MODE" \
+    && composer clear-cache --no-interaction \
+    && find vendor -type d -name .git -prune -exec rm -rf {} + \
     && chown -R www-data:www-data storage bootstrap/cache
 USER www-data
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
@@ -19,6 +23,9 @@ FROM base AS test
 USER root
 RUN --mount=type=secret,id=proxy_ca \
     if [ -f /run/secrets/proxy_ca ]; then export COMPOSER_CAFILE=/run/secrets/proxy_ca GIT_SSL_CAINFO=/run/secrets/proxy_ca; fi; \
-    composer install --no-interaction --prefer-dist
+    composer install --no-interaction --prefer-install="$COMPOSER_INSTALL_MODE" \
+    && composer clear-cache --no-interaction \
+    && find vendor -type d -name .git -prune -exec rm -rf {} + \
+    && mkdir -p .phpunit.cache && chown www-data:www-data .phpunit.cache
 USER www-data
 CMD ["composer", "test"]

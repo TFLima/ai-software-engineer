@@ -6,55 +6,56 @@ Validation date: 2026-10-02. Scope: infrastructure/bootstrap only; B03+ is absen
 
 | Check | Result |
 | --- | --- |
-| `docker compose config --quiet` | Passed |
-| Parsed `docker compose config --format json` | Exactly seven expected services; only Nginx published, at `127.0.0.1:8080`; no database environment in FastAPI |
-| `python3 scripts/setup-env.py` and repeat invocation | Generated ignored `.env` at 0600; second invocation refused overwrite and preserved contents |
-| `docker compose --env-file /dev/null config --quiet` with credential variables absent | Correctly rejected missing credentials |
+| `docker compose config --quiet` and parsed configuration | Passed: seven services; only loopback Nginx publication; no database environment in FastAPI |
+| `python3 scripts/setup-env.py`, repeat invocation and empty environment | Passed: ignored 0600 credentials; no overwrite; Compose rejects missing credentials |
 | Frontend `npm ci --no-audit --no-fund` and `npm run build` | Production compile/type/template build passed; initial bundle approximately 121 kB |
-| FastAPI `python -m pytest -q -p no:cacheprovider` from `services/ai` | Two tests passed; one dependency deprecation warning |
-| Chromium browser check of built Angular assets | Passed: bootstrap, ready/unavailable same-origin health fixtures, no analysis form, no page errors; used temporary Playwright tooling, not the Compose backend |
-| PHP syntax checks on bootstrap sources | Passed using a temporary PHP 8.4 runtime |
-| Composer dependency resolution / lockfile | Laravel 12 with dependency resolution constrained to PHP 8.3; standard source mode used because environment blocks GitHub archive API |
-| Local Nginx syntax and HTTP boundary checks | Passed using temporary Nginx 1.26.3, with upstream names/listener/temp paths adapted for local testing; edge health 200, unexpected Host/Origin and null Origin 403, internal route 404 |
-| Python compilation, `git diff --check`, ignore checks | Passed |
+| Local Laravel `composer test`, platform requirements and route listing | Four tests/13 assertions passed on PHP 8.4; only `GET /api/health` is registered |
+| Local FastAPI `python -m pytest -q -p no:cacheprovider` | Two tests passed |
+| Compose application image builds with the documented local CA/source override | All current application images built; targeted Laravel/frontend rebuilds verified the final Dockerfiles |
+| `docker compose pull postgres redis nginx` | Passed after Docker Hub login |
+| `docker compose up -d --wait --wait-timeout 180` | All seven services reached healthy/running state |
+| `python3 scripts/verify-stack.py` | Passed: live health, actual bindings, CPU/memory caps, non-root application users, credential boundaries, Angular assets, Laravel readiness, internal FastAPI from worker, SQL, Redis, unused pgvector capability and worker liveness |
+| Live Chromium browser against `http://127.0.0.1:8080` | Angular boots, calls real Laravel through Nginx, displays ready state; no page errors or analysis form |
+| Nginx boundary checks in the live verification script | Unexpected Host, external Origin and null Origin rejected with 403; internal run and analysis submission routes absent (404) |
+| FastAPI test-image build and `docker run --rm ai-software-engineer-ai-test` | Two tests passed on selected Python 3.12 image as unprivileged user |
+| `docker compose down` and named-volume inspection | Containers/network removed successfully; PostgreSQL data volume preserved |
+| Laravel test-image build and `docker run --rm ai-software-engineer-backend-test` | Four tests/13 assertions passed on selected PHP 8.3.35 image as unprivileged user |
+| Final Compose restart, live verification and Chromium browser | Passed again after shutdown; all seven services healthy with the preserved PostgreSQL volume |
+| PHP/Python syntax checks, `git diff --check`, ignore/lockfile checks | Passed; no tracked secrets or dependency/build/cache artifacts |
 
-Laravel `composer test` passed with **4 tests and 13 assertions** using temporary
-PHP 8.4.24: dependency readiness, redacted PostgreSQL/Redis failure responses and
-absent analysis routes. `artisan route:list --except-vendor` exposes only
-`GET /api/health`. Source-mode Composer autoload emitted upstream Flysystem class
-ambiguity warnings; package discovery succeeded. Tests exposed Laravel's default
-database session driver, corrected with an in-memory bootstrap session driver
-without session tables. The selected PHP 8.3 container remains unverified.
+All B02 acceptance criteria were demonstrated. The final stack is running with
+seven healthy services; no integration blocker remains.
 
-## Docker integration blocker
+## Environment recovery and bootstrap fixes
 
-The managed Docker 28.4 daemon and Compose 2.40.3 are available. Base-image
-`docker pull` attempts, `docker compose build`, and `docker compose up -d --wait
---wait-timeout 180` were attempted. Docker Hub rejected anonymous pulls with
-HTTP 429 / `toomanyrequests`. `docker compose ps` showed no running containers.
+The managed Docker daemon initially returned Docker Hub HTTP 429 for anonymous
+pulls. Login resolved that blocker. HTTPS builds require the managed proxy CA;
+it is supplied through an optional BuildKit secret, with TLS verification enabled
+and no CA copied into image layers. The network permits Git dependency access but
+blocks GitHub archive API requests; the local override selects Composer's supported
+`COMPOSER_INSTALL_MODE=source`. Normal builds default to distribution archives.
 
-Consequently these checks are **not verified** in this environment:
+Container validation caught restrictive checkout/asset permissions. Dockerfiles
+now normalize application/static-asset readability and assign AI test sources to
+the test user. Loopback wget probes explicitly disable inherited proxies. Laravel
+bootstrap uses in-memory sessions/cache and creates no framework or domain tables.
 
-- Build completion for the service and test images.
-- Starting all seven services and container health convergence.
-- Angular and Laravel HTTP behavior through the actual containerized Nginx.
-- Actual host bindings on running containers.
-- Internal FastAPI access from the Compose worker.
-- PostgreSQL/pgvector availability and SQL connectivity in the selected image.
-- Redis connectivity and continuous Laravel worker liveness in Compose.
-- Container-based framework tests on the selected PHP 8.3/Python 3.12 images.
+The environment's VFS driver copies whole filesystem layers. Source dependency Git
+histories exhausted its 32 GiB disk during test builds. Laravel images now discard
+Composer download caches and dependency Git metadata after installation. Recovery
+removed only individually identified B02 caches/obsolete images and dependency
+histories/mirrors created by this task; credentials, unmatched caches, application
+sources and PostgreSQL data were preserved. No broad Docker prune or volume deletion
+was performed.
 
-The [documented startup and verification commands](local-stack.md) and
-`scripts/verify-stack.py` provide these checks once pulls are available. Authenticate
-Docker Hub in the same environment, then rerun them. Local framework/configuration
-checks do not establish successful Compose integration. B02's service-start
-acceptance remains pending integration verification; every criterion cannot yet be
-claimed as demonstrated.
+Remaining non-failing dependency warnings: source-mode Composer autoload reports
+upstream Flysystem class ambiguity; FastAPI's test dependencies report an AnyIO
+alias deprecation. These do not prevent package discovery, runtime health or tests.
 
 ## Scope review
 
 No analysis routes, domain migrations/models, jobs, reliable handoff, acquisition,
 LLM adapters, findings, embeddings or vector use were added. No accepted ADR or
-normative B01 contract changed. Credentials and generated dependency/build/cache
-artifacts are ignored; only dependency manifests/lockfiles and bootstrap sources
-are intended for Git. PostgreSQL durable data is a named volume; Redis is transient.
+normative B01 contract changed. PostgreSQL exposes pgvector extension files but
+`pg_extension` contains no activated vector extension; there is no application-level
+vector use. B03+ and production deployment remain out of scope.

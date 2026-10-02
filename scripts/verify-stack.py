@@ -41,6 +41,15 @@ def main():
         container = json.loads(run("docker", "inspect", compose("ps", "-q", name)))[0]
         assert container["State"]["Running"], name
         assert container["State"]["Health"]["Status"] == "healthy", name
+        assert container["HostConfig"]["Memory"] > 0, name
+        assert container["HostConfig"]["NanoCpus"] > 0, name
+        if name in {"api", "worker", "ai"}:
+            assert container["Config"]["User"] not in {"", "root", "0"}, name
+        environment_keys = {entry.split("=", 1)[0] for entry in container["Config"].get("Env", [])}
+        if name == "ai":
+            assert not any(key.startswith("DB_") for key in environment_keys), name
+        if name in {"nginx", "frontend", "ai"}:
+            assert not {"APP_KEY", "DB_PASSWORD"} & environment_keys, name
         bindings = container["HostConfig"].get("PortBindings") or {}
         if name == "nginx":
             assert bindings == {"8080/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8080"}]}, bindings
@@ -63,7 +72,7 @@ def main():
     request("/api/analyses", expected=404, method="POST")
     print("PASS edge: Angular assets, Laravel readiness, Host/Origin policy, absent analysis/internal routes")
 
-    assert json.loads(compose("exec", "-T", "frontend", "wget", "-qO-", "http://127.0.0.1:8080/healthz"))["service"] == "frontend"
+    assert json.loads(compose("exec", "-T", "frontend", "wget", "-Y", "off", "-qO-", "http://127.0.0.1:8080/healthz"))["service"] == "frontend"
     ai = compose("exec", "-T", "worker", "php", "-r", "echo file_get_contents('http://ai:8000/health');")
     assert json.loads(ai) == {"status": "ok", "service": "ai"}
     assert compose("exec", "-T", "redis", "redis-cli", "ping") == "PONG"
