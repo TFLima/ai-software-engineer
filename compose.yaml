@@ -1,0 +1,123 @@
+name: ai-software-engineer
+
+x-laravel-environment: &laravel-environment
+  APP_ENV: local
+  APP_URL: http://localhost:8080
+  APP_KEY: ${APP_KEY:?Generate .env with python3 scripts/setup-env.py}
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_DATABASE: ai_software_engineer
+  DB_USERNAME: ai_software_engineer
+  DB_PASSWORD: ${DB_PASSWORD:?Generate .env with python3 scripts/setup-env.py}
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+
+x-health: &health
+  interval: 10s
+  timeout: 5s
+  retries: 6
+  start_period: 20s
+
+services:
+  nginx:
+    image: nginx:1.28-alpine
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [services]
+    depends_on:
+      frontend: {condition: service_healthy}
+      api: {condition: service_healthy}
+    cpus: 0.25
+    mem_limit: 128m
+    healthcheck:
+      <<: *health
+      test: [CMD, wget, -Y, "off", -q, -O, /dev/null, --header=Host:localhost:8080, http://127.0.0.1:8080/healthz]
+
+  frontend:
+    build: ./services/frontend
+    networks: [services]
+    cpus: 0.25
+    mem_limit: 128m
+    healthcheck:
+      <<: *health
+      test: [CMD, wget, -Y, "off", -q, -O, /dev/null, http://127.0.0.1:8080/healthz]
+
+  api:
+    image: ai-software-engineer-backend:local
+    build:
+      context: ./services/backend
+      target: base
+    environment: *laravel-environment
+    networks: [services]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    cpus: 0.5
+    mem_limit: 512m
+    healthcheck:
+      <<: *health
+      test: [CMD, php, -r, "exit(@file_get_contents('http://127.0.0.1:8000/api/health') === false ? 1 : 0);"]
+
+  worker:
+    # Built once by api; consume the local shared image without a registry pull.
+    image: ai-software-engineer-backend:local
+    pull_policy: never
+    environment: *laravel-environment
+    # No jobs exist yet. Framework retries cannot allocate later domain attempts.
+    command: [php, artisan, "queue:work", redis, "--sleep=3", "--tries=1", "--timeout=270"]
+    stop_grace_period: 280s
+    networks: [services]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      ai: {condition: service_healthy}
+    cpus: 0.5
+    mem_limit: 512m
+    healthcheck:
+      <<: *health
+      test: [CMD, php, worker-health.php]
+
+  ai:
+    build:
+      context: ./services/ai
+      target: base
+    networks: [services]
+    cpus: 1.0
+    mem_limit: 1g
+    healthcheck:
+      <<: *health
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ai_software_engineer
+      POSTGRES_USER: ai_software_engineer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Generate .env with python3 scripts/setup-env.py}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [services]
+    cpus: 0.5
+    mem_limit: 512m
+    healthcheck:
+      <<: *health
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+
+  redis:
+    image: redis:7.4-alpine
+    command: [redis-server, --save, "", --appendonly, "no", --maxmemory, 128mb, --maxmemory-policy, noeviction]
+    networks: [services]
+    cpus: 0.25
+    mem_limit: 256m
+    healthcheck:
+      <<: *health
+      test: [CMD, redis-cli, ping]
+
+networks:
+  services:
+    driver: bridge
+
+volumes:
+  postgres-data:

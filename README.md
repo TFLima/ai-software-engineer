@@ -2,7 +2,9 @@
 
 AI Software Engineer is a planned platform for analyzing software projects with AI and presenting evidence-backed technical findings.
 
-The repository currently contains **Phase 0: architecture and planning only**. No application services, containers, migrations, or executable analysis pipeline are implemented. There are no setup or run commands yet.
+The repository contains accepted architecture, B01 v1 contracts, and the **B02 local service bootstrap**. Angular, Laravel API/worker, FastAPI, PostgreSQL/pgvector, Redis and Nginx have a Compose topology and operational health checks. Analysis APIs, domain migrations and the executable analysis pipeline (B03+) are not implemented.
+
+See [local setup and verification](docs/development/local-stack.md) for prerequisites, environment generation, startup, health checks and shutdown. Only Nginx publishes a host port, at `127.0.0.1:8080`.
 
 ## MVP 0.1
 
@@ -10,7 +12,7 @@ A user submits a public GitHub repository URL. The platform registers an asynchr
 
 Repository content is untrusted data. The platform will never build, install dependencies from, test, or execute code from analyzed repositories in MVP 0.1. It will not modify repositories or publish findings to GitHub.
 
-## Planned stack
+## Selected stack
 
 | Layer | Technology | Responsibility |
 | --- | --- | --- |
@@ -20,7 +22,7 @@ Repository content is untrusted data. The platform will never build, install dep
 | Durable storage | PostgreSQL + pgvector | Analysis metadata and findings; vectors deferred to 0.2 |
 | Queue and coordination | Redis | Laravel queue and transient coordination |
 | Edge | Nginx | Serve frontend and route application API requests |
-| Local deployment | Docker Compose | Reproducible service topology, to be implemented later |
+| Local deployment | Docker Compose | Local B02 service topology |
 
 ## Documentation
 
@@ -32,6 +34,6 @@ Repository content is untrusted data. The platform will never build, install dep
 
 MVP 0.1 uses `AnalysisOrchestrator`, `RepositoryReader`, `FileSelector`, `ContextBuilder`, `LLMClient`, and `FindingValidator`. Agent frameworks, multiple agents, skills execution, MCP, embeddings, and RAG are outside MVP 0.1. Interfaces should allow later additions without requiring those capabilities now.
 
-## Phase 0 completion
+## Implementation status
 
-Phase 0 defines the architecture, records its main decisions, and supplies an actionable backlog. Runtime implementation and verification belong to subsequent work. Documentation review establishes design consistency, not proof of runtime security or model accuracy.
+Phase 0 and B01 define the architecture and normative contracts. B02 supplies infrastructure/bootstrap only; B03–B14 remain planned. See the [B02 validation record](docs/development/b02-validation.md) for executed checks and runtime limitations. Documentation and bootstrap checks do not establish analysis security or model accuracy.

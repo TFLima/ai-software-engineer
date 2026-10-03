@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "projects": {"frontend": {
+    "projectType": "application", "root": "", "sourceRoot": "src",
+    "architect": {"build": {
+      "builder": "@angular/build:application",
+      "options": {
+        "browser": "src/main.ts", "index": "src/index.html", "tsConfig": "tsconfig.json",
+        "outputPath": "dist/frontend", "styles": ["src/styles.css"],
+        "assets": [{"glob": "healthz", "input": "src", "output": "/"}]
+      },
+      "configurations": {"production": {"outputHashing": "all",
+        "budgets": [{"type": "initial", "maximumWarning": "500kB", "maximumError": "1MB"}]}},
+      "defaultConfiguration": "production"
+    }}
+  }}
+}
