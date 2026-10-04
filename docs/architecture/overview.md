@@ -1,6 +1,6 @@
 # Architecture overview
 
-Status: accepted Phase 0 design, 2026-09-28. The analysis flow and domain contracts below remain planned. B02 adds the local topology; B03 implements the relational API and B04 reliable queue handoff/authenticated internal boundary. B05 adds the separately callable bounded RepositoryReader and B06 the separately callable FileSelector; context/provider processing and pipeline integration remain B07–B10; see [local setup](../development/local-stack.md). See the [ADRs](adr/README.md) for rationale and the [backlog](../planning/mvp-0.1-backlog.md) for implementation gates.
+Status: accepted Phase 0 design, 2026-09-28. The analysis flow and domain contracts below remain planned. B02 adds the local topology; B03 implements the relational API and B04 reliable queue handoff/authenticated internal boundary. B05–B07 add separately callable RepositoryReader, FileSelector and ContextBuilder components; provider processing and pipeline integration remain B08–B10; see [local setup](../development/local-stack.md). See the [ADRs](adr/README.md) for rationale and the [backlog](../planning/mvp-0.1-backlog.md) for implementation gates.
 
 [B01 implementation contracts v1](../contracts/README.md) refine the planning targets below with exact envelopes, lifecycle rules and initial finite limits. Use them for implementation; the accepted architectural decisions remain unchanged.
 

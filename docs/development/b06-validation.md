@@ -4,8 +4,8 @@ B06 adds a separately callable `FileSelector.select(snapshot, limits, deadline)`
 over B05's immutable manifest and temporary snapshot root. It returns versioned
 selection decisions, eligible file metadata, sorted implied directories and
 omission counts. It does not return source bytes, execute repository content or
-call a provider. Call it while the B05 snapshot context remains open. B07 will
-build bounded context from eligible files; `context_files`, context bytes and
+call a provider. Call it while the B05 snapshot context remains open. B07
+builds bounded context from eligible files; `context_files`, context bytes and
 token budgets are not spent by B06.
 
 ## Selection policy v1
@@ -33,7 +33,8 @@ and aggregate sizes, regular-file type and exact bytes read. It opens each path
 component without following symlinks, then closes all descriptors. The
 `select_seconds` budget and remaining overall deadline reserve cleanup time.
 Corrupt snapshots fail safely. It inventories all eligible files up to B05's
-`file_count`; B07 decides which of them fit `context_files` and context budgets.
+`file_count`; the B07 ContextBuilder decides which fit `context_files` and
+context budgets.
 Implied directories come from file paths; B05 does not inventory empty dirs.
 
 ## Validation

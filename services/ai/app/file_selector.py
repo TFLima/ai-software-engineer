@@ -176,7 +176,7 @@ class FileSelector:
             directories.update("/".join(parts[:index]) for index in range(1, len(parts)))
             reason = item.omission or path_reason(item.path)
             if reason is None:
-                reason = content_reason(self._read(snapshot.root, item, limits, expires))
+                reason = content_reason(read_snapshot_file(snapshot.root, item, limits, expires))
             entries.append(SelectionDecision(item.path, item.size, reason))
         counts = {reason: 0 for reason in REASONS}
         for entry in entries:
@@ -191,37 +191,38 @@ class FileSelector:
         if time.monotonic() >= expires:
             raise SelectionError("limit_exceeded")
 
-    @classmethod
-    def _read(cls, root: Path, item: ManifestEntry, limits: dict[str, int], expires: float) -> bytes:
-        directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
-        file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK
-        try:
-            with ExitStack() as stack:
-                fd = os.open(root, directory_flags)
+
+def read_snapshot_file(root: Path, item: ManifestEntry, limits: dict[str, int], expires: float) -> bytes:
+    """Read a manifested file without following links; shared with ContextBuilder."""
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK
+    try:
+        with ExitStack() as stack:
+            fd = os.open(root, directory_flags)
+            stack.callback(os.close, fd)
+            parts = item.path.split("/")
+            for segment in parts[:-1]:
+                FileSelector._check(expires)
+                fd = os.open(segment, directory_flags, dir_fd=fd)
                 stack.callback(os.close, fd)
-                parts = item.path.split("/")
-                for segment in parts[:-1]:
-                    cls._check(expires)
-                    fd = os.open(segment, directory_flags, dir_fd=fd)
-                    stack.callback(os.close, fd)
-                file_fd = os.open(parts[-1], file_flags, dir_fd=fd)
-                stack.callback(os.close, file_fd)
-                info = os.fstat(file_fd)
-                if not stat.S_ISREG(info.st_mode) or info.st_size != item.size:
+            file_fd = os.open(parts[-1], file_flags, dir_fd=fd)
+            stack.callback(os.close, file_fd)
+            info = os.fstat(file_fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_size != item.size:
+                raise SelectionError("unsafe_snapshot")
+            chunks = []
+            count = 0
+            while True:
+                FileSelector._check(expires)
+                chunk = os.read(file_fd, 16384)
+                if not chunk:
+                    break
+                count += len(chunk)
+                if count > item.size or count > limits["file_bytes"]:
                     raise SelectionError("unsafe_snapshot")
-                chunks = []
-                count = 0
-                while True:
-                    cls._check(expires)
-                    chunk = os.read(file_fd, 16384)
-                    if not chunk:
-                        break
-                    count += len(chunk)
-                    if count > item.size or count > limits["file_bytes"]:
-                        raise SelectionError("unsafe_snapshot")
-                    chunks.append(chunk)
-                if count != item.size:
-                    raise SelectionError("unsafe_snapshot")
-                return b"".join(chunks)
-        except OSError:
-            raise SelectionError("unsafe_snapshot") from None
+                chunks.append(chunk)
+            if count != item.size:
+                raise SelectionError("unsafe_snapshot")
+            return b"".join(chunks)
+    except OSError:
+        raise SelectionError("unsafe_snapshot") from None
