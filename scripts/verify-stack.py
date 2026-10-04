@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
-EXPECTED = {"nginx", "frontend", "api", "worker", "ai", "postgres", "redis"}
+EXPECTED = {"nginx", "frontend", "api", "worker", "ai", "postgres", "redis", "scheduler"}
 
 
 def run(*args):
@@ -43,7 +43,7 @@ def main():
         assert container["State"]["Health"]["Status"] == "healthy", name
         assert container["HostConfig"]["Memory"] > 0, name
         assert container["HostConfig"]["NanoCpus"] > 0, name
-        if name in {"api", "worker", "ai"}:
+        if name in {"api", "worker", "ai", "scheduler"}:
             assert container["Config"]["User"] not in {"", "root", "0"}, name
         environment_keys = {entry.split("=", 1)[0] for entry in container["Config"].get("Env", [])}
         if name == "ai":

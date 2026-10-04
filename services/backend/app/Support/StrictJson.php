@@ -33,6 +33,14 @@ final class StrictJson
         }
     }
 
+    public static function decodeTree(string $source): \stdClass
+    {
+        if (self::decodeObject($source) === null) {
+            throw new \DomainException('Invalid JSON');
+        }
+        return json_decode($source, false, 32, JSON_THROW_ON_ERROR);
+    }
+
     private function value(): void
     {
         if (++$this->depth > 32) {

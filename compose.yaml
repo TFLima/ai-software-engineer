@@ -64,8 +64,11 @@ services:
     # Built once by api; consume the local shared image without a registry pull.
     image: ai-software-engineer-backend:local
     pull_policy: never
-    environment: *laravel-environment
-    # No jobs exist yet. Framework retries cannot allocate later domain attempts.
+    environment:
+      <<: *laravel-environment
+      AI_INTERNAL_URL: http://ai:8000
+      AI_INTERNAL_SECRET: ${AI_INTERNAL_SECRET:?Generate the B04 internal secret}
+    # Domain attempts, rather than framework retries, control execution.
     command: [php, artisan, "queue:work", redis, "--sleep=3", "--tries=1", "--timeout=270"]
     stop_grace_period: 280s
     networks: [services]
@@ -79,10 +82,27 @@ services:
       <<: *health
       test: [CMD, php, worker-health.php]
 
+  scheduler:
+    image: ai-software-engineer-backend:local
+    pull_policy: never
+    environment: *laravel-environment
+    command: [php, artisan, "schedule:work"]
+    networks: [services]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    cpus: 0.25
+    mem_limit: 256m
+    healthcheck:
+      <<: *health
+      test: [CMD, php, scheduler-health.php]
+
   ai:
     build:
       context: ./services/ai
       target: base
+    environment:
+      AI_INTERNAL_SECRET: ${AI_INTERNAL_SECRET:?Generate the B04 internal secret}
     networks: [services]
     cpus: 1.0
     mem_limit: 1g

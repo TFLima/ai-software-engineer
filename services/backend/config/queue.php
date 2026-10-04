@@ -8,6 +8,6 @@ return [
             'retry_after' => 300, 'block_for' => 5, 'after_commit' => false,
         ],
     ],
-    // B03 records durable queued analyses; B04 implements queue publication.
+    // Domain attempt history is durable; framework retries must not allocate attempts.
     'failed' => ['driver' => 'null'],
 ];

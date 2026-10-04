@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\StrictJson;
+use App\Analysis\Publisher;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ final class AnalysisController
 {
     public function store(Request $request): JsonResponse
     {
-        if (strlen($request->getContent()) > 4096) {
+        if (strlen($request->getContent()) > config('analysis.limits.public_body_bytes')) {
             return self::error(413, 'request_too_large', 'Request body is too large.');
         }
         if ($request->header('Content-Type') !== 'application/json') {
@@ -67,7 +68,7 @@ final class AnalysisController
                 $now = Carbon::now('UTC');
                 $recent = DB::table('analyses')->where('created_at', '>=', $now->copy()->subMinute())->count();
                 $pending = DB::table('analyses')->whereIn('status', ['queued', 'running'])->count();
-                if ($recent >= 6 || $pending >= 10) {
+                if ($recent >= config('analysis.limits.submissions_per_minute') || $pending >= config('analysis.limits.queued_analyses')) {
                     return ['error' => 'admission_limited'];
                 }
                 $id = (string) Str::uuid();
@@ -83,8 +84,8 @@ final class AnalysisController
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
-                // The durable queued row is B03's publication intent. B04 adds delivery/reconciliation.
-                return ['id' => $id, 'status' => 'queued'];
+                // Publication happens after the durable transaction commits.
+                return ['id' => $id, 'status' => 'queued', 'new' => true];
             });
         } catch (QueryException) {
             return self::error(503, 'application_unavailable', 'Application is temporarily unavailable.', [], 30);
@@ -94,6 +95,10 @@ final class AnalysisController
                 ? self::error(409, 'idempotency_conflict', 'Idempotency key is already bound to another request.')
                 : self::error(429, 'admission_limited', 'Admission limit reached.', [], 60);
         }
+        if ($result['new'] ?? false) {
+            app(Publisher::class)->publish($result['id']);
+        }
+        unset($result['new']);
         return response()->json(['schema_version' => 1, ...$result], 202)
             ->header('Location', '/api/analyses/'.$result['id']);
     }

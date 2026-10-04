@@ -7,6 +7,9 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(api: __DIR__.'/../routes/api.php')
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        $schedule->command('analyses:reconcile')->everyThirtySeconds();
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         // Browser traffic is same-origin through the loopback edge.
         $middleware->remove(Illuminate\Http\Middleware\HandleCors::class);

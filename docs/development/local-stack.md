@@ -1,8 +1,9 @@
-# B02 local service bootstrap
+# Local service stack (B02–B04)
 
 B02 supplies infrastructure and operational health. B03 adds analysis, attempt and
-finding tables plus the Laravel submission/status/findings API. There are no jobs,
-repository acquisition, provider calls, embeddings, RAG or analysis submission UI.
+finding tables plus the Laravel submission/status/findings API. B04 adds Redis jobs,
+bounded attempts, an authenticated internal boundary and a reconciliation scheduler.
+Repository acquisition, provider calls, embeddings, RAG and the submission UI remain planned.
 The normative [B01 contracts](../contracts/README.md) remain unchanged.
 
 ## Prerequisites and environment
@@ -24,20 +25,29 @@ python3 scripts/verify-stack.py
 ```
 
 The generator creates an ignored `.env` with mode 0600 and independent random
-`APP_KEY` (Laravel AES-256 key) and `DB_PASSWORD` (PostgreSQL password). It refuses
+`APP_KEY` (Laravel AES-256 key), `DB_PASSWORD` (PostgreSQL password), and
+`AI_INTERNAL_SECRET` (worker/FastAPI bearer secret). It refuses
 to overwrite an existing file and never prints credentials. `.env.example` lists
 the required variables with empty values; Compose rejects missing/empty values.
 Do not paste real credentials into tracked files. Avoid publishing `docker compose
 config` or container inspection output containing environment values.
 
 Database name/user are `ai_software_engineer`; Laravel host/port settings are
-provided explicitly in Compose. Laravel uses the Predis PHP client for Redis. Both
+provided explicitly in Compose. Laravel uses the Predis PHP client for Redis. All three
 Laravel processes share the application image/code and environment. Only `api`
 defines the backend build; `worker` consumes `ai-software-engineer-backend:local`
 with `pull_policy: never`, avoiding concurrent exports of the same tag. Run the
 full-stack build/start command above before starting the worker on its own.
-FastAPI receives no database credentials. No internal bearer secret is needed yet
-because the run endpoint is absent; authentication must be implemented with that endpoint in B04/B10 before any analysis execution.
+FastAPI receives no database credentials. Only worker and FastAPI receive the
+internal bearer secret; API, scheduler and frontend do not need it. If upgrading
+an existing B02/B03 `.env`, preserve its existing values and run:
+
+```sh
+python3 scripts/setup-env.py --add-internal-secret
+```
+
+The flag adds only the missing random secret without displaying it. Rebuild and
+restart the stack after adding it.
 
 ## URLs, topology and health
 
@@ -45,7 +55,8 @@ Open <http://localhost:8080> or <http://127.0.0.1:8080>. The Angular page report
 application readiness using same-origin `GET /api/health`; it offers no analysis
 workflow. B03 API clients can submit a public GitHub URL to `POST /api/analyses`
 with JSON and an `Idempotency-Key`, then read `GET /api/analyses/{id}`. Submitted
-analyses stay queued until B04 adds worker handoff. Host port 8080 and its two exact loopback origins are intentional local
+analyses are delivered to the internal service. Until B10 supplies the pipeline,
+the boundary returns terminal `configuration_error` without source/provider work. Host port 8080 and its two exact loopback origins are intentional local
 settings. Changing the port requires changing the edge Host/Origin allowlists,
 `APP_URL`, verification script and documentation together.
 
@@ -55,6 +66,7 @@ settings. Changing the port requires changing the edge Host/Origin allowlists,
 | `frontend` | 8080 | `GET /healthz` | Built Angular/TypeScript assets served by an internal Nginx process |
 | `api` | 8000 | `GET /api/health` | Laravel 12/PHP 8.3; readiness queries PostgreSQL and pings Redis |
 | `worker` | None | `php worker-health.php` | Laravel `queue:work redis`; PID 1 process identity and Redis connectivity |
+| `scheduler` | None | `php scheduler-health.php` | Laravel `schedule:work`; runs reconciliation every 30 seconds |
 | `ai` | 8000 | `GET /health` | Python 3.12/FastAPI; internal process health only |
 | `postgres` | 5432 | `pg_isready` | PostgreSQL 17 with pgvector available; named durable volume |
 | `redis` | 6379 | `redis-cli ping` | Transient queue; no disk persistence, noeviction memory policy |
@@ -73,9 +85,9 @@ unprivileged users. pgvector's extension files are available from the selected
 image; B02 does not activate the extension or create vector/application tables.
 
 Health dependencies gate initial startup only. Compose does not provide reliable
-handoff, retries, reconciliation or lifecycle correctness. Worker timeout 270s,
-Redis reservation 300s and framework `--tries=1` preserve B01 ordering without
-implementing B04 semantics. Worker health is process/queue readiness, not proof
+handoff on its own. B04 application code implements durable claims, retries and
+reconciliation. Worker timeout 270s, Redis reservation 300s and framework
+`--tries=1` preserve the B01 ordering. Worker health is process/queue readiness, not proof
 that a domain job can run. FastAPI and edge health checks do not assert application
 or AI pipeline completeness.
 
@@ -93,7 +105,7 @@ docker compose exec -T redis redis-cli ping
 docker compose logs --tail=50 api worker ai nginx
 ```
 
-The verification script checks all seven healthy/running containers, actual host
+The verification script checks all eight healthy/running containers, actual host
 port bindings, frontend JS delivery, Laravel readiness, internal FastAPI access,
 SQL, Redis, worker liveness, pgvector availability without activation, rejected
 Host/Origin and the absent internal route. It exits nonzero on any failure.
@@ -138,10 +150,11 @@ docker build --target test -t ai-software-engineer-ai-test services/ai
 docker run --rm ai-software-engineer-ai-test
 ```
 
-Laravel tests cover health and B03 submission, validation, idempotency, status and
-findings pagination. Run them only against an isolated database named
+Laravel tests cover health, B03 submission/idempotency/read APIs and B04 claims,
+retry caps, reconciliation, internal responses, stale fences and atomic persistence. Run them only against an isolated database named
 `ai_software_engineer_test`; the suite refuses to reset another database.
-FastAPI tests cover health and the absence of analysis/docs endpoints. With local
+FastAPI tests cover health, authentication, strict requests, ceilings, deadlines,
+overload and the deliberately unavailable pipeline; docs remain disabled. With local
 PHP 8.3+ and extensions available, use `composer install` and `composer test` in
 `services/backend` with `DB_DATABASE=ai_software_engineer_test` and a separate
 PostgreSQL test database. With Python 3.12, create a virtualenv, install
@@ -199,5 +212,10 @@ docker compose down   # remove containers/network, preserve named PostgreSQL vol
 Redis contents are transient and lost when its container is recreated. Removing
 PostgreSQL data is a separate destructive operation (`docker compose down --volumes`);
 use it only for an intentional local reset. Migrations are explicit; no automatic
-seeding runs. Laravel bootstrap sessions/cache use
+seeding runs. The scheduler can be invoked manually with `docker compose exec -T scheduler php
+artisan analyses:reconcile`. Controlled transient retries use `docker compose exec
+-T worker php artisan analyses:retry <analysis-id>`; this cannot reopen completed or
+policy/schema failures. See [B04 behavior and validation](b04-validation.md).
+
+Laravel bootstrap sessions/cache use
 in-memory stores; B02 creates no session/cache/queue tables.

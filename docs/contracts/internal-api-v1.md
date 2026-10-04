@@ -1,5 +1,7 @@
 # Laravel → FastAPI run contract — v1
 
+[Matching OpenAPI definition](internal-api-v1.openapi.yaml).
+
 `POST /internal/v1/analyses:run` is a synchronous call inside an asynchronous Laravel job. No Python queue, callback, database write or browser access. Require JSON, runtime `Authorization: Bearer <secret>` and a 32 KiB request cap. Authenticate before executing any stage. Missing/invalid secret returns 401; safe fixed error code `unauthorized_internal`, no upstream work. Secret comparison must be timing-safe; never log/store the header. Runtime secret is shared only by worker/service, not source/model/frontend. Private networking and no edge routing are additional requirements, not substitutes for authentication.
 
 ## Request envelope

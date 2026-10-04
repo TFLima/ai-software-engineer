@@ -1,0 +1,917 @@
+openapi: 3.1.0
+info:
+  title: AI Software Engineer internal API
+  version: '1'
+servers:
+- url: http://ai:8000
+paths:
+  /internal/v1/analyses:run:
+    post:
+      summary: Run one bounded invocation with a fresh attempt identity
+      security:
+      - internalBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunRequest'
+            example:
+              schema_version: 1
+              finding_schema_version: 1
+              analysis_id: 11111111-1111-4111-8111-111111111111
+              attempt_id: 22222222-2222-4222-8222-222222222222
+              attempt_number: 1
+              repository:
+                owner: example
+                name: small-app
+                url: https://github.com/example/small-app
+              commit_sha: null
+              deadline_at: '2026-09-30T22:04:01Z'
+              selection_policy_version: '1'
+              context_policy_version: '1'
+              prompt_version: '1'
+              limits:
+                archive_bytes: 20971520
+                download_bytes: 52428800
+                extracted_bytes: 104857600
+                file_count: 2000
+                path_depth: 12
+                path_characters: 512
+                file_bytes: 1048576
+                archive_entries: 4000
+                context_files: 100
+                context_bytes: 262144
+                context_spans: 500
+                context_tokens: 12000
+                input_tokens: 16000
+                output_tokens: 6000
+                attempt_tokens: 44000
+                max_findings: 20
+                evidence_per_finding: 5
+                internal_response_bytes: 1048576
+                outbound_concurrency: 1
+                connect_seconds: 5
+                github_request_seconds: 30
+                provider_request_seconds: 60
+                github_requests: 8
+                redirects: 2
+                acquire_seconds: 75
+                select_seconds: 10
+                context_seconds: 10
+                generate_seconds: 125
+                validate_seconds: 10
+                cleanup_seconds: 10
+                overall_seconds: 240
+                operation_tries: 2
+                operation_backoff_seconds: 1
+      responses:
+        '200':
+          description: Validated success; not produced by the B04 boundary stub.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+              example:
+                schema_version: 1
+                finding_schema_version: 1
+                analysis_id: 11111111-1111-4111-8111-111111111111
+                attempt_id: 22222222-2222-4222-8222-222222222222
+                outcome: succeeded
+                repository:
+                  owner: example
+                  name: small-app
+                  url: https://github.com/example/small-app
+                commit_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                findings:
+                - category: reliability
+                  severity: medium
+                  title: Report write may leave partial state
+                  explanation: The inspected sequence writes related records separately;
+                    failure between writes may leave inconsistent state.
+                  recommendation: Consider a transaction around the related writes
+                    and verify failure behavior.
+                  evidence:
+                  - path: app/Services/ReportService.php
+                    start_line: 10
+                    end_line: 18
+                  confidence: 0.7
+                coverage:
+                  inventory_files: 1
+                  eligible_files: 1
+                  included_files: 1
+                  included_lines: 9
+                  omitted_files: 0
+                  included_spans:
+                  - path: app/Services/ReportService.php
+                    start_line: 10
+                    end_line: 18
+                  omissions: []
+                  limitations:
+                  - Static inspection of selected context only
+                provenance:
+                  finding_schema_version: 1
+                  selection_policy_version: '1'
+                  context_policy_version: '1'
+                  prompt_version: '1'
+                  provider: fake
+                  model: fixture-v1
+                  usage:
+                    input_tokens: 200
+                    output_tokens: 100
+                stage_durations_ms:
+                  acquire: 1000
+                  select: 20
+                  context: 30
+                  generate: 500
+                  validate: 20
+                  cleanup: 10
+        '400':
+          description: Malformed or duplicate JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EarlyError'
+        '401':
+          description: Missing or invalid internal bearer secret.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EarlyError'
+        '413':
+          description: Request body exceeds 32768 bytes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EarlyError'
+        '415':
+          description: Media type must be application/json.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EarlyError'
+        '422':
+          description: Invalid request/version or terminal pipeline failure.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/EarlyError'
+                - $ref: '#/components/schemas/Failure'
+        '429':
+          description: Upstream rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Failure'
+        '500':
+          description: Configuration error or internal invalid result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Failure'
+        '502':
+          description: Network/upstream unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Failure'
+              example:
+                schema_version: 1
+                finding_schema_version: 1
+                analysis_id: 11111111-1111-4111-8111-111111111111
+                attempt_id: 22222222-2222-4222-8222-222222222222
+                outcome: failed
+                repository:
+                  owner: example
+                  name: small-app
+                  url: https://github.com/example/small-app
+                commit_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                coverage:
+                  inventory_files: 1
+                  eligible_files: 1
+                  included_files: 1
+                  included_lines: 9
+                  omitted_files: 0
+                  included_spans:
+                  - path: app/Services/ReportService.php
+                    start_line: 10
+                    end_line: 18
+                  omissions: []
+                  limitations:
+                  - Static inspection of selected context only
+                provenance:
+                  finding_schema_version: 1
+                  selection_policy_version: '1'
+                  context_policy_version: '1'
+                  prompt_version: '1'
+                  provider: fake
+                  model: fixture-v1
+                  usage:
+                    input_tokens: null
+                    output_tokens: null
+                stage_durations_ms:
+                  acquire: 1000
+                  select: 20
+                  context: 30
+                  generate: 2000
+                  validate: null
+                  cleanup: 10
+                error:
+                  code: upstream_unavailable
+                  stage: generate
+                  retryable: true
+        '503':
+          description: Single active service slot occupied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Failure'
+        '504':
+          description: Upstream timeout.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Failure'
+components:
+  securitySchemes:
+    internalBearer:
+      type: http
+      scheme: bearer
+  schemas:
+    Repository:
+      type: object
+      additionalProperties: false
+      required:
+      - owner
+      - name
+      - url
+      properties:
+        owner:
+          type: string
+          minLength: 1
+          maxLength: 39
+          pattern: ^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: ^[a-z0-9._-]{1,100}$
+        url:
+          type: string
+          format: uri
+          maxLength: 160
+    Limits:
+      type: object
+      additionalProperties: false
+      required:
+      - archive_bytes
+      - download_bytes
+      - extracted_bytes
+      - file_count
+      - path_depth
+      - path_characters
+      - file_bytes
+      - archive_entries
+      - context_files
+      - context_bytes
+      - context_spans
+      - context_tokens
+      - input_tokens
+      - output_tokens
+      - attempt_tokens
+      - max_findings
+      - evidence_per_finding
+      - internal_response_bytes
+      - outbound_concurrency
+      - connect_seconds
+      - github_request_seconds
+      - provider_request_seconds
+      - github_requests
+      - redirects
+      - acquire_seconds
+      - select_seconds
+      - context_seconds
+      - generate_seconds
+      - validate_seconds
+      - cleanup_seconds
+      - overall_seconds
+      - operation_tries
+      - operation_backoff_seconds
+      properties:
+        archive_bytes:
+          type: integer
+          minimum: 1
+          maximum: 20971520
+        download_bytes:
+          type: integer
+          minimum: 1
+          maximum: 52428800
+        extracted_bytes:
+          type: integer
+          minimum: 1
+          maximum: 104857600
+        file_count:
+          type: integer
+          minimum: 1
+          maximum: 2000
+        path_depth:
+          type: integer
+          minimum: 1
+          maximum: 12
+        path_characters:
+          type: integer
+          minimum: 1
+          maximum: 512
+        file_bytes:
+          type: integer
+          minimum: 1
+          maximum: 1048576
+        archive_entries:
+          type: integer
+          minimum: 1
+          maximum: 4000
+        context_files:
+          type: integer
+          minimum: 1
+          maximum: 100
+        context_bytes:
+          type: integer
+          minimum: 1
+          maximum: 262144
+        context_spans:
+          type: integer
+          minimum: 1
+          maximum: 500
+        context_tokens:
+          type: integer
+          minimum: 1
+          maximum: 12000
+        input_tokens:
+          type: integer
+          minimum: 1
+          maximum: 16000
+        output_tokens:
+          type: integer
+          minimum: 1
+          maximum: 6000
+        attempt_tokens:
+          type: integer
+          minimum: 1
+          maximum: 44000
+        max_findings:
+          type: integer
+          minimum: 1
+          maximum: 20
+        evidence_per_finding:
+          type: integer
+          minimum: 1
+          maximum: 5
+        internal_response_bytes:
+          type: integer
+          minimum: 1
+          maximum: 1048576
+        outbound_concurrency:
+          type: integer
+          minimum: 1
+          maximum: 1
+        connect_seconds:
+          type: integer
+          minimum: 1
+          maximum: 5
+        github_request_seconds:
+          type: integer
+          minimum: 1
+          maximum: 30
+        provider_request_seconds:
+          type: integer
+          minimum: 1
+          maximum: 60
+        github_requests:
+          type: integer
+          minimum: 1
+          maximum: 8
+        redirects:
+          type: integer
+          minimum: 1
+          maximum: 2
+        acquire_seconds:
+          type: integer
+          minimum: 1
+          maximum: 75
+        select_seconds:
+          type: integer
+          minimum: 1
+          maximum: 10
+        context_seconds:
+          type: integer
+          minimum: 1
+          maximum: 10
+        generate_seconds:
+          type: integer
+          minimum: 1
+          maximum: 125
+        validate_seconds:
+          type: integer
+          minimum: 1
+          maximum: 10
+        cleanup_seconds:
+          type: integer
+          minimum: 1
+          maximum: 10
+        overall_seconds:
+          type: integer
+          minimum: 1
+          maximum: 240
+        operation_tries:
+          type: integer
+          minimum: 1
+          maximum: 2
+        operation_backoff_seconds:
+          type: integer
+          minimum: 1
+          maximum: 1
+    RunRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - finding_schema_version
+      - analysis_id
+      - attempt_id
+      - attempt_number
+      - repository
+      - commit_sha
+      - deadline_at
+      - selection_policy_version
+      - context_policy_version
+      - prompt_version
+      - limits
+      properties:
+        schema_version: &id001
+          type: integer
+          const: 1
+        finding_schema_version: *id001
+        analysis_id: &id002
+          type: string
+          format: uuid
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+        attempt_id: *id002
+        attempt_number:
+          type: integer
+          minimum: 1
+          maximum: 3
+        repository: &id003
+          $ref: '#/components/schemas/Repository'
+        commit_sha: &id005
+          oneOf:
+          - &id004
+            type: string
+            pattern: ^[0-9a-f]{40}$
+          - type: 'null'
+        deadline_at:
+          type: string
+          format: date-time
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$
+        selection_policy_version:
+          type: string
+          const: '1'
+        context_policy_version:
+          type: string
+          const: '1'
+        prompt_version:
+          type: string
+          const: '1'
+        limits:
+          $ref: '#/components/schemas/Limits'
+      description: 'Canonical repository identity and URL must agree. Deadline must
+        be unexpired and at most overall_seconds ahead. Limits must satisfy relational
+        consistency and independent service ceilings. Strict JSON: duplicate keys,
+        non-finite numbers and trailing content are rejected.'
+    Span:
+      type: object
+      additionalProperties: false
+      required:
+      - path
+      - start_line
+      - end_line
+      properties:
+        path:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^(?!/)(?![A-Za-z]:)(?!.*\\)(?!.*(?:^|/)\.{1,2}(?:/|$))(?!.*//)(?!.*\/$)[^\u0000-\u001f\u007f]+$
+        start_line:
+          type: integer
+          minimum: 1
+        end_line:
+          type: integer
+          minimum: 1
+      description: Relative POSIX path, at most 12 segments; end_line >= start_line.
+        Evidence ranges must be contained in included context spans.
+    Coverage:
+      type: object
+      additionalProperties: false
+      required:
+      - inventory_files
+      - eligible_files
+      - included_files
+      - omitted_files
+      - included_lines
+      - included_spans
+      - omissions
+      - limitations
+      properties:
+        inventory_files:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        eligible_files:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        included_files:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        omitted_files:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        included_lines:
+          type: integer
+          minimum: 0
+        included_spans:
+          type: array
+          items:
+            $ref: '#/components/schemas/Span'
+          minItems: 0
+          maxItems: 500
+        omissions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - reason
+            - files
+            properties:
+              reason:
+                type: string
+                enum:
+                - binary
+                - generated
+                - vendor
+                - sensitive
+                - unsupported_text
+                - context_budget
+                - submodule
+                - lfs
+              files:
+                type: integer
+                minimum: 0
+                maximum: 2000
+          minItems: 0
+          maxItems: 16
+        limitations:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 256
+            pattern: ^[^\u0000-\u0008\u000b-\u001f\u007f]*$
+          minItems: 1
+          maxItems: 16
+      description: Counts, sorted disjoint merged spans, omission totals and context
+        file limits must agree; success requires nonempty inspected context. See internal-api-v1.md.
+    Provenance:
+      type: object
+      additionalProperties: false
+      required:
+      - finding_schema_version
+      - selection_policy_version
+      - context_policy_version
+      - prompt_version
+      - provider
+      - model
+      - usage
+      properties:
+        finding_schema_version: *id001
+        selection_policy_version:
+          type: string
+          const: '1'
+        context_policy_version:
+          type: string
+          const: '1'
+        prompt_version:
+          type: string
+          const: '1'
+        provider:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[^\u0000-\u0008\u000b-\u001f\u007f]*$
+        model:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[^\u0000-\u0008\u000b-\u001f\u007f]*$
+        usage:
+          type: object
+          additionalProperties: false
+          required:
+          - input_tokens
+          - output_tokens
+          properties:
+            input_tokens:
+              oneOf:
+              - type: integer
+                minimum: 0
+                maximum: 32000
+              - type: 'null'
+            output_tokens:
+              oneOf:
+              - type: integer
+                minimum: 0
+                maximum: 12000
+              - type: 'null'
+    Durations:
+      type: object
+      additionalProperties: false
+      required:
+      - acquire
+      - select
+      - context
+      - generate
+      - validate
+      - cleanup
+      properties:
+        acquire:
+          oneOf:
+          - type: integer
+            minimum: 0
+            maximum: 75000
+          - type: 'null'
+        select:
+          oneOf:
+          - type: integer
+            minimum: 0
+            maximum: 10000
+          - type: 'null'
+        context:
+          oneOf:
+          - type: integer
+            minimum: 0
+            maximum: 10000
+          - type: 'null'
+        generate:
+          oneOf:
+          - type: integer
+            minimum: 0
+            maximum: 125000
+          - type: 'null'
+        validate:
+          oneOf:
+          - type: integer
+            minimum: 0
+            maximum: 10000
+          - type: 'null'
+        cleanup:
+          oneOf:
+          - type: integer
+            minimum: 0
+            maximum: 10000
+          - type: 'null'
+    SuccessDurations:
+      type: object
+      additionalProperties: false
+      required:
+      - acquire
+      - select
+      - context
+      - generate
+      - validate
+      - cleanup
+      properties:
+        acquire:
+          type: integer
+          minimum: 0
+          maximum: 75000
+        select:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        context:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        generate:
+          type: integer
+          minimum: 0
+          maximum: 125000
+        validate:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        cleanup:
+          type: integer
+          minimum: 0
+          maximum: 10000
+    Finding:
+      type: object
+      additionalProperties: false
+      required:
+      - category
+      - severity
+      - title
+      - explanation
+      - recommendation
+      - evidence
+      properties:
+        category:
+          type: string
+          enum:
+          - architecture
+          - maintainability
+          - reliability
+          - security
+          - testing
+        severity:
+          type: string
+          enum:
+          - info
+          - low
+          - medium
+          - high
+          - critical
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: ^[^\u0000-\u001f\u007f]+$
+        explanation:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          pattern: ^[^\u0000-\u0008\u000b-\u001f\u007f]*$
+        recommendation:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: ^[^\u0000-\u0008\u000b-\u001f\u007f]*$
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Span'
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+      description: Text length is validated after trimming; confidence must be finite.
+        Reject the entire candidate on any invalid finding.
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - stage
+      - retryable
+      properties:
+        code:
+          type: string
+          enum:
+          - invalid_request
+          - unsupported_schema
+          - repository_unavailable
+          - unsafe_snapshot
+          - limit_exceeded
+          - no_eligible_context
+          - invalid_findings
+          - invalid_result
+          - configuration_error
+          - network_unavailable
+          - upstream_timeout
+          - upstream_rate_limited
+          - upstream_unavailable
+        stage:
+          type: string
+          enum:
+          - request
+          - acquire
+          - select
+          - context
+          - generate
+          - validate
+          - cleanup
+        retryable:
+          type: boolean
+      description: Retryability and HTTP status must match the lifecycle/internal
+        API tables. Laravel-only queue/transport errors are excluded.
+    Success:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - finding_schema_version
+      - analysis_id
+      - attempt_id
+      - repository
+      - commit_sha
+      - outcome
+      - coverage
+      - provenance
+      - stage_durations_ms
+      - findings
+      properties:
+        schema_version: *id001
+        finding_schema_version: *id001
+        analysis_id: *id002
+        attempt_id: *id002
+        repository: *id003
+        commit_sha: *id004
+        outcome:
+          type: string
+          const: succeeded
+        coverage:
+          $ref: '#/components/schemas/Coverage'
+        provenance:
+          $ref: '#/components/schemas/Provenance'
+        stage_durations_ms:
+          $ref: '#/components/schemas/SuccessDurations'
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Finding'
+          minItems: 0
+          maxItems: 20
+      description: All stage durations are non-null on success. Identity, repository,
+        policy versions and any pinned SHA must match the request; findings and terminal
+        state persist atomically.
+    Failure:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - finding_schema_version
+      - analysis_id
+      - attempt_id
+      - repository
+      - commit_sha
+      - outcome
+      - coverage
+      - provenance
+      - stage_durations_ms
+      - error
+      properties:
+        schema_version: *id001
+        finding_schema_version: *id001
+        analysis_id: *id002
+        attempt_id: *id002
+        repository: *id003
+        commit_sha: *id005
+        outcome:
+          type: string
+          const: failed
+        coverage:
+          oneOf:
+          - $ref: '#/components/schemas/Coverage'
+          - type: 'null'
+        provenance:
+          oneOf:
+          - $ref: '#/components/schemas/Provenance'
+          - type: 'null'
+        stage_durations_ms:
+          $ref: '#/components/schemas/Durations'
+        error:
+          $ref: '#/components/schemas/Error'
+    EarlyError:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - error
+      properties:
+        schema_version: *id001
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - stage
+          - retryable
+          properties:
+            code:
+              type: string
+              enum:
+              - invalid_request
+              - unsupported_schema
+              - unauthorized_internal
+            stage:
+              type: string
+              const: request
+            retryable:
+              type: boolean
+              const: false

@@ -13,6 +13,7 @@ class AnalysisApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Facades\Queue::fake();
         // RefreshDatabase must never reset the operator's retained analyses.
         self::assertSame('ai_software_engineer_test', config('database.connections.pgsql.database'));
     }

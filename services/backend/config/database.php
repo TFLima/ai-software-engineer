@@ -9,7 +9,7 @@ return [
             'database' => env('DB_DATABASE', 'ai_software_engineer'),
             'username' => env('DB_USERNAME', 'ai_software_engineer'),
             'password' => env('DB_PASSWORD'),
-            'charset' => 'utf8', 'prefix' => '', 'search_path' => 'public', 'sslmode' => 'prefer',
+            'timezone' => 'UTC', 'charset' => 'utf8', 'prefix' => '', 'search_path' => 'public', 'sslmode' => 'prefer',
         ],
     ],
     'redis' => [
