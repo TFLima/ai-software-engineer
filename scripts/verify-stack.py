@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
-EXPECTED = {"nginx", "frontend", "api", "worker", "ai", "postgres", "redis"}
+EXPECTED = {"nginx", "frontend", "api", "worker", "ai", "postgres", "redis", "scheduler"}
 
 
 def run(*args):
@@ -43,7 +43,7 @@ def main():
         assert container["State"]["Health"]["Status"] == "healthy", name
         assert container["HostConfig"]["Memory"] > 0, name
         assert container["HostConfig"]["NanoCpus"] > 0, name
-        if name in {"api", "worker", "ai"}:
+        if name in {"api", "worker", "ai", "scheduler"}:
             assert container["Config"]["User"] not in {"", "root", "0"}, name
         environment_keys = {entry.split("=", 1)[0] for entry in container["Config"].get("Env", [])}
         if name == "ai":
@@ -69,8 +69,8 @@ def main():
         assert json.loads(request("/api/health", headers=headers, expected=403))["error"]["code"] == "access_denied"
     request("/api/health", headers={"Origin": "http://localhost:8080"})
     request("/internal/v1/analyses:run", expected=404, method="POST")
-    request("/api/analyses", expected=404, method="POST")
-    print("PASS edge: Angular assets, Laravel readiness, Host/Origin policy, absent analysis/internal routes")
+    assert json.loads(request("/api/analyses", expected=415, method="POST"))["error"]["code"] == "unsupported_media_type"
+    print("PASS edge: Angular assets, Laravel readiness, Host/Origin policy, B03 route and absent internal route")
 
     assert json.loads(compose("exec", "-T", "frontend", "wget", "-Y", "off", "-qO-", "http://127.0.0.1:8080/healthz"))["service"] == "frontend"
     ai = compose("exec", "-T", "worker", "php", "-r", "echo file_get_contents('http://ai:8000/health');")

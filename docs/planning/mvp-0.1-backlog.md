@@ -1,15 +1,15 @@
 # MVP 0.1 backlog
 
-Status: B01 and B02 complete; B03–B14 planned. P0 items are required for MVP acceptance; P1 is optional follow-up. IDs define dependencies rather than calendar estimates. The [overview](../architecture/overview.md) is the contract source and the [ADRs](../architecture/adr/README.md) record decisions.
+Status: B01–B04 complete; B05–B14 planned. P0 items are required for MVP acceptance; P1 is optional follow-up. IDs define dependencies rather than calendar estimates. The [overview](../architecture/overview.md) is the contract source and the [ADRs](../architecture/adr/README.md) record decisions.
 
-B01 documentation deliverables are complete in the [versioned implementation contracts](../contracts/README.md), including the acceptance comparison. B02 has a [runtime bootstrap](../development/local-stack.md); its [validation record](../development/b02-validation.md) records successful container, integration and browser checks.
+B01 documentation deliverables are complete in the [versioned implementation contracts](../contracts/README.md), including the acceptance comparison. B02 has a [runtime bootstrap](../development/local-stack.md); its [validation record](../development/b02-validation.md) records successful container, integration and browser checks. B03 adds the relational analysis API; its [validation record](../development/b03-validation.md) covers database and endpoint tests. Submission persists a queued row for B04's later queue handoff.
 
 | ID | Status | Priority | Work item | Dependencies | Acceptance criteria |
 | --- | --- | --- | --- | --- | --- |
 | B01 | [x] | P0 | Define minimum implementation contracts and policies | None | Specify analysis lifecycle and versioned findings schema, application API and internal request/result contracts with valid/invalid examples; set initial conservative finite archive/file/context/token/concurrency/time and attempt limits; agree loopback-only access scope |
 | B02 | [x] | P0 | Bootstrap selected services and Compose topology | B01 | Angular/TypeScript, Laravel 12/PHP API and worker, FastAPI, PostgreSQL/pgvector, Redis and Nginx start with documented commands and health checks; only loopback Nginx exposed; secrets absent from Git; vector functionality unused |
-| B03 | [ ] | P0 | Implement relational lifecycle and API | B02 | Migrations store analyses/attempts/findings and provenance; submit returns 202; duplicate key returns same analysis and changed body conflicts; invalid URL rejected; status and paginated findings match contracts; no results presented as ready before completion |
-| B04 | [ ] | P0 | Implement reliable queue handoff | B03 | Job claims one active attempt; worker authenticates to internal FastAPI; timeout ordering and attempt caps enforced; missing queue publication and expired attempts reconciled; duplicate/stale results cannot overwrite state; transient retries and terminal errors tested |
+| B03 | [x] | P0 | Implement relational lifecycle and API | B02 | Migrations store analyses/attempts/findings and provenance; submit returns 202; duplicate key returns same analysis and changed body conflicts; invalid URL rejected; status and paginated findings match contracts; no results presented as ready before completion |
+| B04 | [x] | P0 | Implement reliable queue handoff | B03 | Job claims one active attempt; worker authenticates to internal FastAPI; timeout ordering and attempt caps enforced; missing queue publication and expired attempts reconciled; duplicate/stale results cannot overwrite state; transient retries and terminal errors tested |
 | B05 | [ ] | P0 | Implement `RepositoryReader` | B01, B02 | Public GitHub URL resolves to SHA and bounded snapshot; redirect/address SSRF controls, safe extraction and resource limits tested; unsafe links/paths rejected; submodules/LFS skipped and reported; no repository commands executed; temporary data cleaned on failure and success; establish GitHub quota handling and refine request pacing from observed responses within the initial limits |
 | B06 | [ ] | P0 | Implement `FileSelector` | B05 | Deterministically identify structure and select eligible text; binary/generated/vendor/sensitive paths filtered; limits enforced; fixture manifests verify selection and exclusion reasons |
 | B07 | [ ] | P0 | Implement `ContextBuilder` | B06 | Preserve paths and original line numbers, deterministic order, versioned policy and bounded token budget; report inspected/omitted context; repository instruction fixtures remain data; no embeddings or retrieval required |
@@ -40,3 +40,5 @@ No private repository credentials, repository writes, code execution, automatic 
 - Every step of the requested MVP flow maps to backlog acceptance criteria.
 - Incremental releases 0.1–0.7 are documented without making later components 0.1 dependencies.
 - Blocking implementation choices and verification requirements are visible before implementation starts.
+
+B04 implementation and verification are recorded in [reliable queue handoff](../development/b04-validation.md). This completes queue/boundary behavior, not the B05–B10 source/provider pipeline.

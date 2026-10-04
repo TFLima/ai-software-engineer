@@ -8,6 +8,6 @@ return [
             'retry_after' => 300, 'block_for' => 5, 'after_commit' => false,
         ],
     ],
-    // No queue tables/domain persistence in B02.
+    // Domain attempt history is durable; framework retries must not allocate attempts.
     'failed' => ['driver' => 'null'],
 ];

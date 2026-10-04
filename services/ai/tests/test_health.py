@@ -10,6 +10,5 @@ def test_health():
     assert response.json() == {"status": "ok", "service": "ai"}
 
 
-def test_analysis_and_docs_are_not_implemented():
-    assert client.post("/internal/v1/analyses:run", json={}).status_code == 404
+def test_docs_remain_private():
     assert client.get("/docs").status_code == 404

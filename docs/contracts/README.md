@@ -5,8 +5,8 @@ Status: B01 documentation deliverables complete; no runtime implementation. Thes
 | Contract | Implementation authority |
 | --- | --- |
 | [Lifecycle](analysis-lifecycle-v1.md) | Laravel state, attempts, retries and persistence |
-| [Application API](application-api-v1.md) | Angular → Laravel submission, polling and pagination |
-| [Internal API](internal-api-v1.md) | Laravel worker → FastAPI synchronous run |
+| [Application API](application-api-v1.md) and [OpenAPI](application-api-v1.openapi.yaml) | Angular → Laravel submission, polling and pagination |
+| [Internal API](internal-api-v1.md) and [OpenAPI](internal-api-v1.openapi.yaml) | Laravel worker → FastAPI synchronous run |
 | [Findings](finding-schema-v1.md) | Provider-independent candidate validation and evidence |
 | [Limits and access](limits-and-access-v1.md) | Central server defaults, deadlines and local boundary |
 
