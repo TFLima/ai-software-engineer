@@ -29,9 +29,4 @@ class HealthTest extends TestCase
             'status' => 'unavailable', 'service' => 'application',
         ]);
     }
-    public function test_analysis_routes_are_absent(): void
-    {
-        $this->postJson('/api/analyses', [])->assertNotFound();
-        $this->getJson('/api/analyses/example')->assertNotFound();
-    }
 }

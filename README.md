@@ -2,7 +2,7 @@
 
 AI Software Engineer is a planned platform for analyzing software projects with AI and presenting evidence-backed technical findings.
 
-The repository contains accepted architecture, B01 v1 contracts, and the **B02 local service bootstrap**. Angular, Laravel API/worker, FastAPI, PostgreSQL/pgvector, Redis and Nginx have a Compose topology and operational health checks. Analysis APIs, domain migrations and the executable analysis pipeline (B03+) are not implemented.
+The repository contains accepted architecture, B01 v1 contracts, the B02 local service bootstrap, and the B03 Laravel analysis API with relational storage. Angular, Laravel API/worker, FastAPI, PostgreSQL/pgvector, Redis and Nginx have a Compose topology and operational health checks. Queue delivery and the executable analysis pipeline (B04+) are not implemented.
 
 See [local setup and verification](docs/development/local-stack.md) for prerequisites, environment generation, startup, health checks and shutdown. Only Nginx publishes a host port, at `127.0.0.1:8080`.
 
@@ -36,4 +36,4 @@ MVP 0.1 uses `AnalysisOrchestrator`, `RepositoryReader`, `FileSelector`, `Contex
 
 ## Implementation status
 
-Phase 0 and B01 define the architecture and normative contracts. B02 supplies infrastructure/bootstrap only; B03–B14 remain planned. See the [B02 validation record](docs/development/b02-validation.md) for executed checks and runtime limitations. Documentation and bootstrap checks do not establish analysis security or model accuracy.
+Phase 0 and B01 define the architecture and normative contracts. B02 supplies infrastructure/bootstrap; B03 adds durable queued analyses, idempotent submission, status and findings reads. B04–B14 remain planned. See the [local setup](docs/development/local-stack.md), [B02 validation](docs/development/b02-validation.md) and [B03 validation](docs/development/b03-validation.md). B03 submissions remain queued until B04 implements reliable worker handoff.

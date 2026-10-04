@@ -1,0 +1,263 @@
+openapi: 3.1.0
+info:
+  title: AI Software Engineer application API
+  version: '1'
+  description: B03 public Laravel API. The Markdown v1 contracts remain normative.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /api/analyses:
+    post:
+      operationId: submitAnalysis
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: {type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9._:-]+$'}
+        - name: Accept
+          in: header
+          required: true
+          schema: {type: string, const: application/json}
+      requestBody:
+        required: true
+        description: Entire UTF-8 JSON body is limited to 4096 bytes.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [repository_url]
+              properties:
+                repository_url: {type: string, minLength: 1, maxLength: 2048, description: Canonical public GitHub repository URL; see application-api-v1.md}
+      responses:
+        '202':
+          description: Accepted or idempotent replay
+          headers:
+            Location: {schema: {type: string}}
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [schema_version, id, status]
+                properties:
+                  schema_version: {type: integer, const: 1}
+                  id: {$ref: '#/components/schemas/Uuid'}
+                  status: {$ref: '#/components/schemas/AnalysisStatus'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+        '415': {$ref: '#/components/responses/Error'}
+        '422': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/AdmissionLimited'}
+        '503': {$ref: '#/components/responses/ApplicationUnavailable'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/analyses/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisId'
+    get:
+      operationId: getAnalysis
+      responses:
+        '200':
+          description: Current durable analysis state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Analysis'}
+        '404': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/ApplicationUnavailable'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/analyses/{id}/findings:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisId'
+    get:
+      operationId: getFindings
+      parameters:
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 2147483647, default: 1}
+        - name: per_page
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 20, default: 20}
+      responses:
+        '200':
+          description: Findings of a completed analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [schema_version, analysis_id, commit_sha, finding_schema_version, data, pagination]
+                properties:
+                  schema_version: {type: integer, const: 1}
+                  analysis_id: {$ref: '#/components/schemas/Uuid'}
+                  commit_sha: {type: string, pattern: '^[0-9a-f]{40}$'}
+                  finding_schema_version: {type: integer, const: 1}
+                  data: {type: array, items: {$ref: '#/components/schemas/Finding'}}
+                  pagination:
+                    type: object
+                    additionalProperties: false
+                    required: [page, per_page, total, total_pages]
+                    properties:
+                      page: {type: integer, minimum: 1}
+                      per_page: {type: integer, minimum: 1, maximum: 20}
+                      total: {type: integer, minimum: 0}
+                      total_pages: {type: integer, minimum: 0}
+        '404': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '422': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/ApplicationUnavailable'}
+        '500': {$ref: '#/components/responses/Error'}
+components:
+  parameters:
+    AnalysisId:
+      name: id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Uuid'}
+  responses:
+    Error:
+      description: Safe public error; see application-api-v1.md for code and status mapping
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/PublicError'}
+    AdmissionLimited:
+      description: New-submission rate or queue cap
+      headers:
+        Retry-After: {schema: {type: string, const: '60'}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/PublicError'}
+    ApplicationUnavailable:
+      description: Durable admission or read unavailable
+      headers:
+        Retry-After: {schema: {type: string, const: '30'}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/PublicError'}
+  schemas:
+    Uuid: {type: string, format: uuid}
+    AnalysisStatus: {type: string, enum: [queued, running, completed, failed]}
+    Timestamp: {type: string, format: date-time}
+    Repository:
+      type: object
+      additionalProperties: false
+      required: [owner, name, url]
+      properties:
+        owner: {type: string}
+        name: {type: string}
+        url: {type: string}
+    Usage:
+      type: object
+      additionalProperties: false
+      required: [input_tokens, output_tokens]
+      properties:
+        input_tokens: {type: [integer, 'null'], minimum: 0}
+        output_tokens: {type: [integer, 'null'], minimum: 0}
+    Provenance:
+      type: object
+      additionalProperties: false
+      required: [finding_schema_version, selection_policy_version, context_policy_version, prompt_version, provider, model, usage]
+      properties:
+        finding_schema_version: {type: integer, const: 1}
+        selection_policy_version: {type: string}
+        context_policy_version: {type: string}
+        prompt_version: {type: string}
+        provider: {type: string}
+        model: {type: string}
+        usage: {$ref: '#/components/schemas/Usage'}
+    Coverage:
+      type: object
+      additionalProperties: false
+      required: [inventory_files, eligible_files, included_files, included_lines, omitted_files, omissions, limitations]
+      properties:
+        inventory_files: {type: integer, minimum: 0}
+        eligible_files: {type: integer, minimum: 0}
+        included_files: {type: integer, minimum: 0}
+        included_lines: {type: integer, minimum: 0}
+        omitted_files: {type: integer, minimum: 0}
+        omissions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [reason, files]
+            properties:
+              reason: {type: string, enum: [binary, generated, vendor, sensitive, unsupported_text, context_budget, submodule, lfs]}
+              files: {type: integer, minimum: 0}
+        limitations: {type: array, items: {type: string}}
+    SafeAnalysisError:
+      type: object
+      additionalProperties: false
+      required: [code, stage, message, retryable]
+      properties:
+        code: {type: string}
+        stage: {type: string}
+        message: {type: string}
+        retryable: {type: boolean}
+    Analysis:
+      type: object
+      additionalProperties: false
+      required: [schema_version, id, status, repository, commit_sha, attempt_count, active_attempt_id, created_at, started_at, finished_at, coverage, provenance, error]
+      properties:
+        schema_version: {type: integer, const: 1}
+        id: {$ref: '#/components/schemas/Uuid'}
+        status: {$ref: '#/components/schemas/AnalysisStatus'}
+        repository: {$ref: '#/components/schemas/Repository'}
+        commit_sha: {type: [string, 'null'], pattern: '^[0-9a-f]{40}$'}
+        attempt_count: {type: integer, minimum: 0, maximum: 3}
+        active_attempt_id: {anyOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        created_at: {$ref: '#/components/schemas/Timestamp'}
+        started_at: {anyOf: [{$ref: '#/components/schemas/Timestamp'}, {type: 'null'}]}
+        finished_at: {anyOf: [{$ref: '#/components/schemas/Timestamp'}, {type: 'null'}]}
+        coverage: {anyOf: [{$ref: '#/components/schemas/Coverage'}, {type: 'null'}]}
+        provenance: {anyOf: [{$ref: '#/components/schemas/Provenance'}, {type: 'null'}]}
+        error: {anyOf: [{$ref: '#/components/schemas/SafeAnalysisError'}, {type: 'null'}]}
+    Finding:
+      type: object
+      additionalProperties: false
+      required: [id, category, severity, title, explanation, recommendation, evidence]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        category: {type: string, enum: [architecture, maintainability, reliability, security, testing]}
+        severity: {type: string, enum: [info, low, medium, high, critical]}
+        title: {type: string, minLength: 1, maxLength: 160}
+        explanation: {type: string, minLength: 1, maxLength: 4000}
+        recommendation: {type: string, minLength: 1, maxLength: 2000}
+        evidence:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [path, start_line, end_line]
+            properties:
+              path: {type: string}
+              start_line: {type: integer, minimum: 1}
+              end_line: {type: integer, minimum: 1}
+        confidence: {type: number, minimum: 0, maximum: 1}
+    PublicError:
+      type: object
+      additionalProperties: false
+      required: [schema_version, error]
+      properties:
+        schema_version: {type: integer, const: 1}
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, details]
+          properties:
+            code: {type: string, enum: [invalid_json, access_denied, analysis_not_found, idempotency_conflict, analysis_not_completed, request_too_large, unsupported_media_type, validation_failed, admission_limited, application_unavailable, internal_error]}
+            message: {type: string}
+            details:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [field, code]
+                properties:
+                  field: {type: string}
+                  code: {type: string, enum: [required, invalid_type, invalid_repository_url, invalid_idempotency_key, unknown_field, out_of_range]}
