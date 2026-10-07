@@ -3,7 +3,7 @@
 B02 supplies infrastructure and operational health. B03 adds analysis, attempt and
 finding tables plus the Laravel submission/status/findings API. B04 adds Redis jobs,
 bounded attempts, an authenticated internal boundary and a reconciliation scheduler.
-Repository acquisition, provider calls, embeddings, RAG and the submission UI remain planned.
+B05–B08 acquisition, selection, context and LLM generation are independently callable; endpoint integration, embeddings, RAG and the submission UI remain planned. See [B08 configuration and validation](b08-validation.md): provider calls are disabled by default, and Compose does not yet inject provider credentials.
 The normative [B01 contracts](../contracts/README.md) remain unchanged.
 
 ## Prerequisites and environment
@@ -28,7 +28,7 @@ The generator creates an ignored `.env` with mode 0600 and independent random
 `APP_KEY` (Laravel AES-256 key), `DB_PASSWORD` (PostgreSQL password), and
 `AI_INTERNAL_SECRET` (worker/FastAPI bearer secret). It refuses
 to overwrite an existing file and never prints credentials. `.env.example` lists
-the required variables with empty values; Compose rejects missing/empty values.
+the required stack secrets with empty values and standalone B08 provider settings; Compose rejects missing/empty stack secrets.
 Do not paste real credentials into tracked files. Avoid publishing `docker compose
 config` or container inspection output containing environment values.
 
