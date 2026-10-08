@@ -1,4 +1,4 @@
-"""Provider-independent generation schema; full candidate validation is B09."""
+"""Provider-independent generation schema; FindingValidator independently enforces B09 candidate rules."""
 
 
 def finding_schema(max_findings: int, evidence_per_finding: int) -> dict:
