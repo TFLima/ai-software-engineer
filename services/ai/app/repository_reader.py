@@ -79,7 +79,7 @@ class RepositoryReader:
 
     @asynccontextmanager
     async def snapshot(self, repository: dict, commit_sha: str | None, limits: dict,
-                       deadline: datetime):
+                       deadline: datetime, on_sha=None):
         owner, name = identity(repository)
         if commit_sha is not None and (type(commit_sha) is not str or not SHA.fullmatch(commit_sha)):
             raise AcquisitionError("invalid_request")
@@ -103,6 +103,8 @@ class RepositoryReader:
                 commit_sha = head.get("sha")
                 if type(commit_sha) is not str or not SHA.fullmatch(commit_sha):
                     raise AcquisitionError("repository_unavailable")
+            if on_sha is not None:
+                on_sha(commit_sha)
             archive = workspace / "archive.tar.gz"
             url = f"https://codeload.github.com/{owner}/{name}/tar.gz/{commit_sha}"
             await self.download(url, archive, budget)

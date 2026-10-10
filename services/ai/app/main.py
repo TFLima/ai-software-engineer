@@ -1,4 +1,4 @@
-"""Authenticated B04 boundary; the executable analysis pipeline arrives in B05–B10."""
+"""Authenticated internal boundary for the fixed analysis pipeline."""
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.limits import CEILINGS
+from app.orchestrator import AnalysisOrchestrator
 
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("Internal authentication configuration is missing")
     app.state.secret = secret
     app.state.slot = asyncio.Lock()
+    app.state.orchestrator = AnalysisOrchestrator()
     yield
 
 
@@ -137,6 +139,5 @@ async def run(request: Request):
     if request.app.state.slot.locked():
         return JSONResponse(status_code=503, content=failure(payload, "upstream_unavailable", retryable=True))
     async with request.app.state.slot:
-        # Fail closed until RepositoryReader and the B10 pipeline are implemented.
-        # This endpoint performs no source/provider calls and never fabricates findings.
-        return JSONResponse(status_code=500, content=failure(payload, "configuration_error"))
+        status, result = await request.app.state.orchestrator.run(payload)
+        return JSONResponse(status_code=status, content=result)
