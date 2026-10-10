@@ -1,0 +1,41 @@
+<header><a class="brand" href="#" (click)="newAnalysis()">AI Software Engineer</a><span class="hint">MVP 0.1 · ambiente local</span></header>
+<main>
+<section class="intro"><p class="eyebrow">INSPEÇÃO ESTÁTICA · REPOSITÓRIOS PÚBLICOS</p><h1>Do código às evidências.</h1><p>Analise um snapshot do GitHub e consulte sugestões técnicas apoiadas nas linhas do código.</p></section>
+<section class="panel" aria-labelledby="submit-title"><h2 id="submit-title">Analisar repositório</h2><form (submit)="submit($event)">
+<label for="repository">URL pública do GitHub</label><div class="submit-row"><input id="repository" name="repository_url" type="url" autocomplete="off" maxlength="2048" placeholder="https://github.com/autor/repositorio" [value]="url()" (input)="setUrl($event)" [disabled]="submitting()" aria-describedby="url-help disclosure" required><button type="submit" [disabled]="!canSubmit()">{{ submitting() ? 'Enviando…' : 'Iniciar análise' }}</button></div>
+<p id="url-help" class="hint">Somente repositórios públicos. Não informe credenciais, branches ou caminhos de arquivos.</p>
+<div id="disclosure" class="disclosure"><strong>Antes de enviar</strong><p>Trechos do código público selecionado, caminhos e números de linha serão enviados à OpenAI quando a geração estiver habilitada. A filtragem pode não remover todos os segredos. A política padrão do provedor pode reter conteúdo para monitoramento de abuso por até 30 dias; <code>store=false</code> não garante retenção zero.</p><label class="checkbox"><input type="checkbox" [checked]="acknowledged()" (change)="acknowledged.set($any($event.target).checked)" [disabled]="submitting()"><span>Entendi e autorizo o envio do código público selecionado ao provedor.</span></label></div>
+@if (secondsLeft() > 0) { <p role="status" class="hint">Aguarde {{ secondsLeft() }} segundos antes de tentar novamente.</p> }
+@if (submissionError()) { <p class="notice error" role="alert">{{ submissionError() }}</p> }
+</form></section>
+@if (analysisId()) {
+<section class="panel" aria-labelledby="analysis-title"><div class="section-heading"><h2 id="analysis-title">Acompanhamento</h2><button type="button" class="secondary" (click)="newAnalysis()">Nova análise</button></div><p class="hint">ID <code>{{ analysisId() }}</code></p>
+@if (statusLoading() && !analysis()) { <p role="status">Carregando análise…</p> }
+@if (analysis(); as a) {
+<div class="status-row"><span class="status" [attr.data-status]="a.status" role="status">{{ statusLabel[a.status] }}</span><span class="hint">Tentativas: {{ a.attempt_count }} / 3</span></div><p class="repository-name">{{ a.repository.owner }}/{{ a.repository.name }}</p>
+@if (a.status === 'queued') { <p>A análise aguarda execução. O acompanhamento é atualizado automaticamente.</p> }
+@if (a.status === 'running') { <p>O snapshot está sendo inspecionado. Aguarde a validação dos resultados.</p> }
+@if (a.status === 'completed') { <p>Resultados validados disponíveis. As sugestões são consultivas e precisam de revisão humana.</p> }
+@if (a.error; as e) { <div class="notice" [class.error]="a.status === 'failed'" role="alert"><p>{{ failureMessage(e.code) }}</p>@if (a.status === 'queued') { <p>Uma nova tentativa automática está na fila.</p> }@if (a.status === 'failed' && e.retryable) { <p>Falha transitória. O operador pode verificar a elegibilidade para uma nova tentativa; esta tela não inicia retries de execução.</p> }<small>Código: {{ e.code }} · Etapa: {{ e.stage }}</small></div> }
+@if (a.commit_sha) { <p class="sha"><strong>Snapshot SHA</strong><code>{{ a.commit_sha }}</code></p> }
+<dl class="timestamps"><div><dt>Criada (UTC)</dt><dd>{{ a.created_at }}</dd></div>@if (a.finished_at) { <div><dt>Finalizada (UTC)</dt><dd>{{ a.finished_at }}</dd></div> }</dl>
+@if (a.coverage; as c) { <div class="coverage"><h3>Cobertura do contexto</h3><dl class="metrics"><div><dt>Inventariados</dt><dd>{{ c.inventory_files }}</dd></div><div><dt>Elegíveis</dt><dd>{{ c.eligible_files }}</dd></div><div><dt>Incluídos</dt><dd>{{ c.included_files }}</dd></div><div><dt>Linhas incluídas</dt><dd>{{ c.included_lines }}</dd></div><div><dt>Omitidos</dt><dd>{{ c.omitted_files }}</dd></div></dl>@if (c.omissions.length) { <ul>@for (o of c.omissions; track o.reason) { <li>{{ omissionLabel[o.reason] }}: {{ o.files }} arquivo(s)</li> }</ul> }<h4>Limitações informadas</h4><ul>@for (limitation of c.limitations; track $index) { <li>{{ limitation }}</li> }</ul></div> }
+@if (a.provenance; as p) { <p class="hint">Provedor: {{ p.provider }} · Modelo: {{ p.model }} · Prompt: {{ p.prompt_version }}<br>Tokens de entrada: {{ p.usage.input_tokens ?? 'indisponível' }} · Saída: {{ p.usage.output_tokens ?? 'indisponível' }}</p> }
+}
+@if (statusError()) { <p class="notice error" role="alert">{{ statusError() }}</p> }
+@if (paused()) { <p class="hint">O acompanhamento está pausado.</p><button type="button" class="secondary" (click)="resume()" [disabled]="statusLoading()">Retomar acompanhamento</button> }
+</section>
+@if (analysis()?.status === 'completed') {
+<section class="panel" aria-labelledby="findings-title"><div class="section-heading"><h2 id="findings-title">Achados</h2>@if (page(); as p) { <span class="hint">{{ p.pagination.total }} no contexto inspecionado</span> }</div>
+@if (resultsLoading()) { <p role="status">Carregando achados…</p> }
+@if (resultsError()) { <p class="notice error" role="alert">{{ resultsError() }}</p><button type="button" class="secondary" (click)="loadPage(requestedPage())" [disabled]="resultsLoading()">Tentar carregar novamente</button> }
+@if (page(); as p) {
+@if (p.pagination.total === 0) { <div class="empty"><h3>Nenhum achado no contexto inspecionado</h3><p>Isso não certifica a qualidade ou a segurança do repositório. Consulte a cobertura e as limitações acima.</p></div> }
+@for (f of p.data; track f.id) { <article class="finding"><div class="finding-tags"><span>{{ categoryLabel[f.category] }}</span><span class="severity" [attr.data-severity]="f.severity">Severidade: {{ severityLabel[f.severity] }}</span></div><h3>{{ f.title }}</h3><p class="plain-text">{{ f.explanation }}</p><h4>Recomendação</h4><p class="plain-text">{{ f.recommendation }}</p><h4>Evidências no snapshot</h4><ul class="evidence">@for (e of f.evidence; track $index) { <li><code>{{ e.path }}</code><span>Linhas {{ e.start_line }}–{{ e.end_line }}</span></li> }</ul>@if (f.confidence !== undefined) { <p class="hint">Confiança informada pelo modelo: {{ f.confidence }} (não é uma probabilidade calibrada).</p> }</article> }
+@if (p.pagination.total_pages > 1) { <nav class="pagination" aria-label="Paginação dos achados"><button type="button" class="secondary" [disabled]="resultsLoading() || p.pagination.page === 1" (click)="loadPage(p.pagination.page - 1)">Anterior</button><span>Página {{ p.pagination.page }} de {{ p.pagination.total_pages }}</span><button type="button" class="secondary" [disabled]="resultsLoading() || p.pagination.page === p.pagination.total_pages" (click)="loadPage(p.pagination.page + 1)">Próxima</button></nav> }
+}
+</section>
+}
+} @else if (statusError()) { <p class="notice error" role="alert">{{ statusError() }}</p> }
+<footer>Inspeção estática de contexto limitado. O código analisado não é executado nem alterado.</footer>
+</main>

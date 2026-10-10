@@ -154,7 +154,7 @@ Laravel tests cover health, B03 submission/idempotency/read APIs and B04 claims,
 retry caps, reconciliation, internal responses, stale fences and atomic persistence. Run them only against an isolated database named
 `ai_software_engineer_test`; the suite refuses to reset another database.
 FastAPI tests cover health, authentication, strict requests, ceilings, deadlines,
-overload and the deliberately unavailable pipeline; docs remain disabled. With local
+overload and the B10 pipeline with simulated GitHub and fake generation; docs remain disabled. With local
 PHP 8.3+ and extensions available, use `composer install` and `composer test` in
 `services/backend` with `DB_DATABASE=ai_software_engineer_test` and a separate
 PostgreSQL test database. With Python 3.12, create a virtualenv, install
@@ -219,3 +219,29 @@ policy/schema failures. See [B04 behavior and validation](b04-validation.md).
 
 Laravel bootstrap sessions/cache use
 in-memory stores; B02 creates no session/cache/queue tables.
+
+## Browser analysis flow (B11)
+
+Open `http://127.0.0.1:8080`, enter a public GitHub URL and acknowledge the
+source-transmission disclosure. The UI follows queued/running/completed/failed,
+shows SHA/coverage and displays completed findings in pages of five. With the
+default disabled provider configuration, the analysis fails safely with an
+actionable configuration message. See [B10 provider setup](b10-validation.md)
+and [B11 behavior and verification](b11-validation.md).
+
+After updating frontend code, rebuild/recreate the frontend through
+`docker compose up -d --build`. Each analysis has a local hash link such as
+`http://127.0.0.1:8080/#analysis/<id>`; reloading it resumes reads without
+resubmitting. Frontend-only checks run from `services/frontend`:
+
+```sh
+npm ci --no-audit --no-fund
+npm test
+npx playwright install chromium --only-shell
+npm run test:browser
+```
+
+Contract tests need Node 22.18+ (native TypeScript stripping). Browser tests
+serve the production build on loopback and mock the public API; no repository or
+provider calls are made. Playwright is a development-only dependency. The runtime
+frontend image serves built assets; it does not run tests or contain credentials.
