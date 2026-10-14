@@ -20,8 +20,9 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def main():
-    for binary in ('docker', 'npm'):
-        if shutil.which(binary) is None:
+    binaries = {binary: shutil.which(binary) for binary in ('docker', 'npm')}
+    for binary, path in binaries.items():
+        if path is None:
             raise RuntimeError(f'Missing prerequisite: {binary}')
     if not (ROOT / 'services/frontend/node_modules/playwright').is_dir():
         raise RuntimeError('Run npm ci and npx playwright install chromium --only-shell in services/frontend')
@@ -56,7 +57,7 @@ def main():
         verification.compose = lambda *args: subprocess.check_output(
             compose + list(args), cwd=ROOT, env=env, text=True).strip()
         verification.main(database="ai_software_engineer_test")
-        run('real browser flow', ['npm', 'run', 'test:integrated'], ROOT / 'services/frontend')
+        run('real browser flow', [binaries['npm'], 'run', 'test:integrated'], ROOT / 'services/frontend')
         run('operator inspection commands', compose + ['exec', '-T', 'scheduler', 'php', 'artisan', 'analyses:purge'])
     finally:
         # The random project owns these volumes; never targets a dev project.

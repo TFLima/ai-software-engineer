@@ -113,13 +113,17 @@ from native integrated acceptance; passing one does not imply the other.
   error/atomic rollback test excluded. The full fallback run hit an aborted
   transaction in that test and contaminated subsequent tests. Do not infer native
   rollback correctness or failure from this alternative backend.
-- Native Docker/Compose execution is blocked: Docker is absent in this host.
-  `python scripts/verify-mvp.py` fails explicitly on that prerequisite; the runner
-  does not skip the backend suite or report a simulated run as native acceptance.
+- Native Docker/Compose acceptance passed on Windows with Docker Desktop 28.0.1
+  and Compose v2.33.1: `python scripts/verify-mvp.py` ran 28 Laravel tests
+  (248 assertions) against PostgreSQL, verified all eight healthy services and
+  their boundaries, passed three real Playwright browser scenarios (persisted
+  success, escaped XSS and malformed output), and removed its disposable project
+  and volume. The runner resolves the `npm.CMD` path on Windows before launching
+  the browser suite.
 
-Native PostgreSQL atomic rollback, concurrency/locking, Compose health/topology,
-and the full isolated Compose browser command remain release gates. A diagnostic host attempt using PGlite, real Redis/Laravel/worker/FastAPI and a
-temporary Node proxy also failed its browser acceptance (initial completion
+The native PostgreSQL and isolated Compose browser gates above now pass. A prior
+diagnostic host attempt using PGlite, real Redis/Laravel/worker/FastAPI and a
+temporary Node proxy failed its browser acceptance (initial completion
 timeout followed by API errors); it is not evidence of a passing full flow. The
 AI pipeline did produce a valid success event, which does not prove successful
 public reads/persistence. PGlite/socket also reproduces failed savepoint recovery
