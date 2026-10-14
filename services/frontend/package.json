@@ -5,7 +5,8 @@
   "scripts": {
     "build": "ng build",
     "test": "node --experimental-strip-types --test tests/contracts.test.mjs",
-    "test:browser": "npm run build && node --test tests/browser.test.mjs"
+    "test:browser": "npm run build && node --test tests/browser.test.mjs",
+    "test:integrated": "node --test tests/integrated.test.mjs"
   },
   "dependencies": {
     "@angular/common": "^20.3.0",

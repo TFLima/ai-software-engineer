@@ -65,7 +65,7 @@ def test_cleanup_deletion_batch_is_bounded(tmp_path):
 
 def test_sweeper_waits_for_active_analysis_slot(monkeypatch, tmp_path):
     import asyncio
-    from app.main import app, lifespan
+    from app.main import app, lifespan, cleanup_when_idle
     calls = []
     monkeypatch.setenv('AI_INTERNAL_SECRET', 's' * 64)
     monkeypatch.setattr('app.main.workspace_root', lambda: tmp_path)
@@ -73,15 +73,15 @@ def test_sweeper_waits_for_active_analysis_slot(monkeypatch, tmp_path):
 
     async def scenario():
         async with lifespan(app):
+            assert calls == ['swept']  # initial sweep finishes before readiness
+            calls.clear()
             await app.state.slot.acquire()
+            task = asyncio.create_task(cleanup_when_idle(app))
             try:
                 await asyncio.sleep(0)
                 assert calls == []
             finally:
                 app.state.slot.release()
-            for _ in range(100):
-                await asyncio.sleep(0.001)
-                if calls:
-                    break
+            await task
             assert calls == ['swept']
     asyncio.run(scenario())

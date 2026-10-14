@@ -1,9 +1,9 @@
-# Local service stack (B02–B04)
+# Local service stack (MVP 0.1)
 
 B02 supplies infrastructure and operational health. B03 adds analysis, attempt and
 finding tables plus the Laravel submission/status/findings API. B04 adds Redis jobs,
 bounded attempts, an authenticated internal boundary and a reconciliation scheduler.
-B05–B08 acquisition, selection, context and LLM generation are independently callable; endpoint integration, embeddings, RAG and the submission UI remain planned. See [B08 configuration and validation](b08-validation.md): provider calls are disabled by default, and Compose does not yet inject provider credentials.
+B05–B09 implement acquisition, selection, context, provider and finding validation. B10 integrates them, B11 adds the Angular analysis flow and B12 adds operational controls. Provider calls remain disabled by default; see [B08 configuration and validation](b08-validation.md). Embeddings and RAG remain outside MVP 0.1.
 The normative [B01 contracts](../contracts/README.md) remain unchanged.
 
 ## Prerequisites and environment
@@ -51,12 +51,9 @@ restart the stack after adding it.
 
 ## URLs, topology and health
 
-Open <http://localhost:8080> or <http://127.0.0.1:8080>. The Angular page reports
-application readiness using same-origin `GET /api/health`; it offers no analysis
-workflow. B03 API clients can submit a public GitHub URL to `POST /api/analyses`
+Open <http://localhost:8080> or <http://127.0.0.1:8080>. The Angular page offers URL submission with source-transmission disclosure, bounded status polling and paginated results. B03 API clients can submit a public GitHub URL to `POST /api/analyses`
 with JSON and an `Idempotency-Key`, then read `GET /api/analyses/{id}`. Submitted
-analyses are delivered to the internal service. Until B10 supplies the pipeline,
-the boundary returns terminal `configuration_error` without source/provider work. Host port 8080 and its two exact loopback origins are intentional local
+analyses are delivered to the internal service. With generation disabled, the pipeline returns terminal `configuration_error` before source/provider work. Host port 8080 and its two exact loopback origins are intentional local
 settings. Changing the port requires changing the edge Host/Origin allowlists,
 `APP_URL`, verification script and documentation together.
 
@@ -249,3 +246,7 @@ frontend image serves built assets; it does not run tests or contain credentials
 ## Operations and data lifecycle (B12)
 
 Terminal results are retained for 30 days by default (`ANALYSIS_RETENTION_DAYS`), then removed hourly with their attempts, findings and idempotency records. Active work is preserved. Use `analyses:inspect <analysis-id>` on the scheduler for safe queue age, timings, errors and usage; `analyses:purge` for expired results or `analyses:purge --id=<analysis-id>` for explicit terminal deletion. AI snapshots are cleaned immediately and orphan workspaces older than one hour are swept every five minutes. See [B12 policy, recovery and verification](b12-validation.md).
+
+## Integrated acceptance (B13)
+
+Run `python3 scripts/verify-mvp.py` with Docker/Compose and the frontend Playwright prerequisites. It creates a disposable test project and database, runs backend regressions, verifies topology and exercises real browser submissions with replayed public source/fake generation. It removes only its own test volumes afterward. See [B13 evidence and release gates](b13-validation.md); a successful component test run does not close native integrated acceptance.

@@ -18,6 +18,14 @@ UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 
 
+async def cleanup_when_idle(application):
+    async with application.state.slot:
+        try:
+            await asyncio.to_thread(cleanup_stale)
+        except (OSError, RuntimeError):
+            event('stale_workspace_cleanup', code='snapshot_cleanup_failed')
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     secret = os.environ.get("AI_INTERNAL_SECRET", "")
@@ -27,14 +35,13 @@ async def lifespan(app: FastAPI):
     app.state.slot = asyncio.Lock()
     workspace_root()
     app.state.orchestrator = AnalysisOrchestrator()
+    # Complete initial maintenance before readiness to avoid a startup overload race.
+    await cleanup_when_idle(app)
+
     async def sweep():
         while True:
-            async with app.state.slot:
-                try:
-                    await asyncio.to_thread(cleanup_stale)
-                except (OSError, RuntimeError):
-                    event('stale_workspace_cleanup', code='snapshot_cleanup_failed')
             await asyncio.sleep(300)
+            await cleanup_when_idle(app)
     cleaner = asyncio.create_task(sweep())
     try:
         yield

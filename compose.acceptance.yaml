@@ -1,0 +1,31 @@
+# TEST ONLY: pair with compose.yaml under a disposable project.
+services:
+  api:
+    image: ai-software-engineer-backend:acceptance
+    build:
+      target: test
+    command: [php, artisan, serve, --host=0.0.0.0, --port=8000]
+    environment:
+      APP_ENV: testing
+      DB_DATABASE: ai_software_engineer_test
+  worker:
+    image: ai-software-engineer-backend:acceptance
+    environment:
+      APP_ENV: testing
+      DB_DATABASE: ai_software_engineer_test
+  scheduler:
+    image: ai-software-engineer-backend:acceptance
+    environment:
+      APP_ENV: testing
+      DB_DATABASE: ai_software_engineer_test
+  postgres:
+    environment:
+      POSTGRES_DB: ai_software_engineer_test
+  ai:
+    build:
+      target: test
+    command: [python, -m, uvicorn, acceptance_app:app, --app-dir, /app/tests/support, --host, 0.0.0.0, --port, "8000", --workers, "1", --no-access-log]
+    environment:
+      LLM_REAL_ENABLED: "false"
+      OPENAI_API_KEY: ""
+      LLM_SOURCE_DISCLOSURE_ACKNOWLEDGED: "false"
