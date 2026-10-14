@@ -1,6 +1,7 @@
 name: ai-software-engineer
 
 x-laravel-environment: &laravel-environment
+  ANALYSIS_RETENTION_DAYS: ${ANALYSIS_RETENTION_DAYS:-30}
   APP_ENV: local
   APP_URL: http://localhost:8080
   APP_KEY: ${APP_KEY:?Generate .env with python3 scripts/setup-env.py}

@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'retention_days' => env('ANALYSIS_RETENTION_DAYS', 30),
     'internal_url' => env('AI_INTERNAL_URL', 'http://ai:8000'),
     'internal_secret' => env('AI_INTERNAL_SECRET', ''),
     'limits' => [

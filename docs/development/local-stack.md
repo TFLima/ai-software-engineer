@@ -245,3 +245,7 @@ Contract tests need Node 22.18+ (native TypeScript stripping). Browser tests
 serve the production build on loopback and mock the public API; no repository or
 provider calls are made. Playwright is a development-only dependency. The runtime
 frontend image serves built assets; it does not run tests or contain credentials.
+
+## Operations and data lifecycle (B12)
+
+Terminal results are retained for 30 days by default (`ANALYSIS_RETENTION_DAYS`), then removed hourly with their attempts, findings and idempotency records. Active work is preserved. Use `analyses:inspect <analysis-id>` on the scheduler for safe queue age, timings, errors and usage; `analyses:purge` for expired results or `analyses:purge --id=<analysis-id>` for explicit terminal deletion. AI snapshots are cleaned immediately and orphan workspaces older than one hour are swept every five minutes. See [B12 policy, recovery and verification](b12-validation.md).

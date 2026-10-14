@@ -1,6 +1,6 @@
 # MVP 0.1 backlog
 
-Status: B01–B09 component work complete; B10 implemented with Laravel/Compose runtime verification pending; B11 frontend implemented; B12–B14 planned. B08 real calls are disabled by default and verified only with simulated transport. P0 items are required for MVP acceptance; P1 is optional follow-up. IDs define dependencies rather than calendar estimates. The [overview](../architecture/overview.md) is the contract source and the [ADRs](../architecture/adr/README.md) record decisions.
+Status: B01–B09 component work complete; B10 implemented with Laravel/Compose runtime verification pending; B11 frontend implemented; B12 operational controls implemented with Laravel/Compose verification pending; B13–B14 planned. B08 real calls are disabled by default and verified only with simulated transport. P0 items are required for MVP acceptance; P1 is optional follow-up. IDs define dependencies rather than calendar estimates. The [overview](../architecture/overview.md) is the contract source and the [ADRs](../architecture/adr/README.md) record decisions.
 
 B01 documentation deliverables are complete in the [versioned implementation contracts](../contracts/README.md), including the acceptance comparison. B02 has a [runtime bootstrap](../development/local-stack.md); its [validation record](../development/b02-validation.md) records successful container, integration and browser checks. B03 adds the relational analysis API; its [validation record](../development/b03-validation.md) covers database and endpoint tests. Submission persists a queued row for B04's later queue handoff.
 
@@ -56,3 +56,5 @@ B09 strict candidate validation, exact-context evidence checks and deterministic
 B10 pipeline integration and validation limitations are recorded in [B10 validation](../development/b10-validation.md). Laravel/PostgreSQL and live-provider verification remain pending in this environment.
 
 B11 browser flow, bounded polling, disclosure and escaped results are documented in [B11 validation](../development/b11-validation.md). Integrated Compose/live-provider verification remains pending.
+
+B12 operations, retention/deletion policy and verification limits are recorded in [B12 validation](../development/b12-validation.md). Its runtime acceptance remains pending PostgreSQL/Compose checks.

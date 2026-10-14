@@ -9,6 +9,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(api: __DIR__.'/../routes/api.php')
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         $schedule->command('analyses:reconcile')->everyThirtySeconds();
+        $schedule->command('analyses:purge')->hourly()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         // Browser traffic is same-origin through the loopback edge.

@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from app.limits import CEILINGS
 from app.orchestrator import AnalysisOrchestrator
+from app.operations import CORRELATION, cleanup_stale, event, workspace_root
 
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -24,8 +25,25 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("Internal authentication configuration is missing")
     app.state.secret = secret
     app.state.slot = asyncio.Lock()
+    workspace_root()
     app.state.orchestrator = AnalysisOrchestrator()
-    yield
+    async def sweep():
+        while True:
+            async with app.state.slot:
+                try:
+                    await asyncio.to_thread(cleanup_stale)
+                except (OSError, RuntimeError):
+                    event('stale_workspace_cleanup', code='snapshot_cleanup_failed')
+            await asyncio.sleep(300)
+    cleaner = asyncio.create_task(sweep())
+    try:
+        yield
+    finally:
+        cleaner.cancel()
+        try:
+            await cleaner
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="Internal AI service", docs_url=None, redoc_url=None,
@@ -139,5 +157,9 @@ async def run(request: Request):
     if request.app.state.slot.locked():
         return JSONResponse(status_code=503, content=failure(payload, "upstream_unavailable", retryable=True))
     async with request.app.state.slot:
-        status, result = await request.app.state.orchestrator.run(payload)
-        return JSONResponse(status_code=status, content=result)
+        token = CORRELATION.set({key: payload[key] for key in ('analysis_id', 'attempt_id')})
+        try:
+            status, result = await request.app.state.orchestrator.run(payload)
+            return JSONResponse(status_code=status, content=result)
+        finally:
+            CORRELATION.reset(token)

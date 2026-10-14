@@ -11,6 +11,7 @@ from app.finding_validator import FindingValidator, FindingError
 from app.llm_client import GenerationRequest, LLMError, TRANSIENT
 from app.openai_llm import openai_client_from_env
 from app.repository_reader import RepositoryReader
+from app.operations import event
 
 STAGES = ('acquire', 'select', 'context', 'generate', 'validate', 'cleanup')
 
@@ -126,4 +127,8 @@ class AnalysisOrchestrator:
                     raise
             result['stage_durations_ms']['cleanup'] = min(limits['cleanup_seconds'] * 1000,
                                                           int((time.monotonic() - started) * 1000))
+        event('analysis_finished', analysis_id=payload['analysis_id'], attempt_id=payload['attempt_id'],
+              outcome=result['outcome'], code=result.get('error', {}).get('code'),
+              stage=result.get('error', {}).get('stage'), stage_durations_ms=result['stage_durations_ms'],
+              usage=result['provenance']['usage'] if result['provenance'] else None)
         return (200 if result['outcome'] == 'succeeded' else status_for(result['error']['code'])), result
