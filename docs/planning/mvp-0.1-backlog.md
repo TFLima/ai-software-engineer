@@ -1,6 +1,6 @@
 # MVP 0.1 backlog
 
-Status: B01–B09 component work complete; B10 implemented with Laravel/Compose runtime verification pending; B11 frontend implemented; B12 operational controls implemented with Laravel/Compose verification pending; B13 verification fixtures/runner implemented with native integrated acceptance pending; B14 planned. B08 real calls are disabled by default and verified only with simulated transport. P0 items are required for MVP acceptance; P1 is optional follow-up. IDs define dependencies rather than calendar estimates. The [overview](../architecture/overview.md) is the contract source and the [ADRs](../architecture/adr/README.md) record decisions.
+Status: B01–B09 component work complete; B10 and B11 implemented with native integrated acceptance exercised in B13; B12 operational controls passed targeted PostgreSQL/Compose checks, with retention tuning and real wall-clock intervals still open; B13 native integrated acceptance passed, with formal closure dependent on B12; B14 planned. B08 real calls are disabled by default and verified only with simulated transport. P0 items are required for MVP acceptance; P1 is optional follow-up. IDs define dependencies rather than calendar estimates. The [overview](../architecture/overview.md) is the contract source and the [ADRs](../architecture/adr/README.md) record decisions.
 
 B01 documentation deliverables are complete in the [versioned implementation contracts](../contracts/README.md), including the acceptance comparison. B02 has a [runtime bootstrap](../development/local-stack.md); its [validation record](../development/b02-validation.md) records successful container, integration and browser checks. B03 adds the relational analysis API; its [validation record](../development/b03-validation.md) covers database and endpoint tests. Submission persists a queued row for B04's later queue handoff.
 
@@ -53,10 +53,10 @@ B08 client, fake/OpenAI adapters, configured data policy, monetary ceilings and 
 
 B09 strict candidate validation, exact-context evidence checks and deterministic fixtures are recorded in [FindingValidator validation](../development/b09-validation.md). Endpoint orchestration and independent Laravel integration remain B10.
 
-B10 pipeline integration and validation limitations are recorded in [B10 validation](../development/b10-validation.md). Laravel/PostgreSQL and live-provider verification remain pending in this environment.
+B10 pipeline integration and validation limitations are recorded in [B10 validation](../development/b10-validation.md). Native Laravel/PostgreSQL and isolated Compose acceptance passed in B13; live-provider verification remains separate.
 
-B11 browser flow, bounded polling, disclosure and escaped results are documented in [B11 validation](../development/b11-validation.md). Integrated Compose/live-provider verification remains pending.
+B11 browser flow, bounded polling, disclosure and escaped results are documented in [B11 validation](../development/b11-validation.md). Integrated Compose browser verification passed in B13 with a fake provider; live-provider verification remains separate.
 
-B12 operations, retention/deletion policy and verification limits are recorded in [B12 validation](../development/b12-validation.md). Its runtime acceptance remains pending PostgreSQL/Compose checks.
+B12 operations, retention/deletion policy and verification limits are recorded in [B12 validation](../development/b12-validation.md). PostgreSQL race tests, a due hourly event, a controlled periodic sweep and a live Compose startup sweep passed; wall-clock intervals and retention tuning remain open.
 
-B13 deterministic scenarios, pinned public snapshot, independent PHP validation, isolated Compose/browser runner and open release gates are recorded in [B13 validation](../development/b13-validation.md). B12/B13 remain unchecked until the native PostgreSQL/Compose gates pass; implemented verification code is not final MVP acceptance.
+B13 deterministic scenarios, pinned public snapshot, independent PHP validation and the passing isolated Compose/browser runner are recorded in [B13 validation](../development/b13-validation.md). B13 remains unchecked until its B12 prerequisite is closed.

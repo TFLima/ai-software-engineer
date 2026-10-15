@@ -85,3 +85,34 @@ def test_sweeper_waits_for_active_analysis_slot(monkeypatch, tmp_path):
             await task
             assert calls == ['swept']
     asyncio.run(scenario())
+
+
+def test_periodic_sweep_runs_after_interval(monkeypatch, tmp_path):
+    import asyncio
+    from app.main import app, lifespan
+
+    runs = []
+    real_sleep = asyncio.sleep
+    intervals = []
+    monkeypatch.setenv('AI_INTERNAL_SECRET', 's' * 64)
+    monkeypatch.setattr('app.main.workspace_root', lambda: tmp_path)
+    monkeypatch.setattr('app.main.cleanup_stale', lambda: runs.append('swept'))
+
+    async def advance_interval(seconds):
+        intervals.append(seconds)
+        if len(intervals) > 1:
+            await asyncio.Future()
+
+    monkeypatch.setattr('app.main.asyncio.sleep', advance_interval)
+
+    async def scenario():
+        async with lifespan(app):
+            assert runs == ['swept']
+            for _ in range(50):
+                if len(runs) == 2:
+                    break
+                await real_sleep(0.01)
+            assert runs == ['swept', 'swept']
+            assert intervals == [300, 300]
+
+    asyncio.run(scenario())

@@ -2,7 +2,8 @@
 
 B13 adds a reproducible acceptance profile and deterministic cross-boundary
 fixtures. This is verification work, not a new runtime provider or feature.
-The release gate stays open until native PostgreSQL/Compose acceptance succeeds.
+Native PostgreSQL/Compose acceptance passed. Formal B13 closure follows the B12
+operations gate recorded in the backlog.
 
 ## Captured public baseline and evaluation
 

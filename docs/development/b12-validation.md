@@ -82,10 +82,23 @@ See [B04](b04-validation.md) and [B10](b10-validation.md) for existing recovery 
 
 ## Verification and remaining limits
 
-- `cd services/ai && python -m pytest -q -p no:cacheprovider`: 323 passed;
-  one existing AnyIO deprecation warning.
+- `cd services/ai && python -m pytest -q -p no:cacheprovider`: 323 passed
+  during B12 implementation. A later isolated Compose test-image run passed 336
+  tests, including the periodic sweep interval check; one existing AnyIO
+  deprecation warning.
 - `python -m compileall -q services/ai/app services/ai/tests`: passed.
 - `git diff --check`: passed.
+- An isolated PostgreSQL/Compose test run passed 31 Laravel tests (274
+  assertions). The new retention race check observed the purge waiting on the
+  row lock while an expired failure was still eligible, then confirmed that a
+  concurrent retry left the analysis queued with both attempts. When purge
+  completed first, operator retry could not reopen the deleted analysis. The
+  hourly scheduler event was
+  due at a controlled hour and deleted an expired terminal result.
+- All eight services in the disposable Compose project became healthy.
+  `schedule:list` showed `analyses:purge` hourly in the running scheduler.
+  Restarting the AI container removed a workspace aged beyond one hour and
+  preserved a fresh one; its log reported only deletion counts.
 
 New fixtures cover old/fresh/unrelated workspace handling, symlink isolation,
 bounded deletion batches, correlated cleanup failures, safe event fields and
@@ -94,8 +107,11 @@ Existing 317 tests cover real pipeline components with fake provider/transport,
 cleanup on success/failure/cancellation and all earlier contract regressions.
 Laravel `OperationsTest` adds terminal cascading deletion, preservation of
 pending work, explicit deletion, idempotency expiry, inspection and invalid IDs.
-PHP, Composer and Docker are unavailable here: that PostgreSQL-backed suite,
-retention/retry race execution and scheduled Compose behavior remain unverified.
-Run the backend test procedure in [local setup](local-stack.md) before release.
-B13 integrated acceptance and live finding usefulness/cost assessment remain
-separate; no paid provider call or live repository analysis was performed.
+The scheduler's actual one-hour and five-minute wall-clock intervals were not
+waited out: the hourly event ran at a controlled due time, and the periodic AI
+loop ran with its interval advanced in a deterministic test. The live Compose
+check exercised the AI startup sweep and scheduler registration. The 30-day
+retention default remains conservative; useful-window and storage measurements
+for tuning it are not available from these small fixtures. B13 isolated
+acceptance passed separately; no paid provider call or live repository analysis
+was performed.
