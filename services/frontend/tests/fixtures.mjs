@@ -18,9 +18,9 @@ export function finding(n = 1) {
     title: `Achado ${n}`, explanation: '<img src=x onerror="window.xss=1">', recommendation: '<script>window.xss=2</script>',
     evidence: [{ path: 'app/a.php', start_line: 1, end_line: 10 }] };
 }
-export function findings(page = 1, total = 6) {
+export function findings(page = 1, total = 6, perPage = 5) {
   return { schema_version: 1, analysis_id: id, commit_sha: sha, finding_schema_version: 1,
-    data: Array.from({ length: Math.max(0, Math.min(5, total - (page - 1) * 5)) }, (_, i) => finding((page - 1) * 5 + i + 1)),
-    pagination: { page, per_page: 5, total, total_pages: Math.ceil(total / 5) } };
+    data: Array.from({ length: Math.max(0, Math.min(perPage, total - (page - 1) * perPage)) }, (_, i) => finding((page - 1) * perPage + i + 1)),
+    pagination: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } };
 }
 export function apiError(code) { return { schema_version: 1, error: { code, message: 'Safe platform message.', details: [] } }; }

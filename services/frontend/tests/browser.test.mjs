@@ -43,7 +43,7 @@ test('consent gates admission; all lifecycle states, pagination, SHA and escaped
       assert.equal(req.headers()['accept'], 'application/json'); assert.match(req.headers()['idempotency-key'], /^[0-9a-f-]{36}$/);
       return json(route, { schema_version: 1, id, status: 'queued' }, 202);
     }
-    if (path.pathname.endsWith('/findings')) return json(route, findings(Number(path.searchParams.get('page'))));
+    if (path.pathname.endsWith('/findings')) { assert.equal(path.searchParams.get('page'), '1'); assert.equal(path.searchParams.get('per_page'), '20'); return json(route, findings(1, 6, 20)); }
     return json(route, analysis(['queued', 'running', 'completed'][Math.min(reads++, 2)]));
   });
   await page.locator('#repository').fill('https://github.com/example/small-app'); assert.equal(await start(page).isEnabled(), false); assert.equal(posts, 0);
@@ -86,7 +86,7 @@ test('terminal failure is actionable and stops polling without loading results',
 });
 
 test('valid empty findings explain limitations and mobile layout stays within viewport', async t => {
-  const page = await session(t, route => json(route, route.request().url().includes('/findings') ? findings(1, 0) : analysis()), { viewport: { width: 390, height: 844 } });
+  const page = await session(t, route => json(route, route.request().url().includes('/findings') ? findings(1, 0, 20) : analysis()), { viewport: { width: 390, height: 844 } });
   await page.goto(`${origin}/#analysis/${id}`); await shown(page, 'Nenhum achado no contexto inspecionado');
   await page.getByText('Isso não certifica a qualidade', { exact: false }).waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -124,17 +124,44 @@ test('five unavailable reads honor cooldown, pause and recover via explicit resu
   await page.getByRole('button', { name: 'Retomar acompanhamento', exact: true }).click(); await shown(page, 'Falhou'); assert.equal(reads, 6);
 });
 
-test('invalid page SHA is not displayed; retry fetches the requested page', async t => {
-  let pageTwo = 0;
+test('invalid result SHA is not displayed; retry fetches the validated result set', async t => {
+  let requests = 0;
   const page = await session(t, route => {
     const path = new URL(route.request().url()); if (!path.pathname.endsWith('/findings')) return json(route, analysis());
-    const n = Number(path.searchParams.get('page')); if (n === 2 && ++pageTwo === 1) return json(route, { ...findings(2), commit_sha: 'b'.repeat(40) });
-    return json(route, findings(n));
+    assert.equal(path.searchParams.get('page'), '1'); assert.equal(path.searchParams.get('per_page'), '20');
+    if (++requests === 1) return json(route, { ...findings(1, 6, 20), commit_sha: 'b'.repeat(40) });
+    return json(route, findings(1, 6, 20));
+  });
+  await page.goto(`${origin}/#analysis/${id}`); await page.getByText('Os resultados não puderam ser validados.', { exact: false }).waitFor();
+  assert.equal(await page.locator('.finding').count(), 0);
+  await page.getByRole('button', { name: 'Tentar carregar novamente', exact: true }).click(); await shown(page, 'Achado 1'); assert.equal(requests, 2);
+});
+
+test('filters use all findings, reset pagination and link to pinned source without another API read', async t => {
+  let reads = 0;
+  const page = await session(t, route => {
+    const path = new URL(route.request().url()); if (!path.pathname.endsWith('/findings')) return json(route, analysis());
+    reads++; const result = findings(1, 7, 20);
+    result.data[5].category = 'reliability'; result.data[5].severity = 'high';
+    result.data[5].evidence[0].path = 'src/a #?.php';
+    result.data[6].category = 'reliability'; result.data[6].severity = 'low';
+    return json(route, result);
   });
   await page.goto(`${origin}/#analysis/${id}`); await shown(page, 'Achado 1');
-  await page.getByRole('button', { name: 'Próxima', exact: true }).click(); await page.getByText('Os resultados não puderam ser validados.', { exact: false }).waitFor();
-  assert.equal(await page.getByText('Achado 6', { exact: true }).count(), 0);
-  await page.getByRole('button', { name: 'Tentar carregar novamente', exact: true }).click(); await shown(page, 'Achado 6'); assert.equal(pageTwo, 2);
+  await page.getByRole('button', { name: 'Próxima', exact: true }).click(); await shown(page, 'Achado 6');
+  await page.getByLabel('Categoria', { exact: true }).selectOption('reliability');
+  assert.equal(await page.locator('.finding').count(), 2);
+  await page.getByText('Página 1 de 2').waitFor({ state: 'detached' });
+  await page.getByLabel('Severidade', { exact: true }).selectOption('high');
+  assert.equal(await page.locator('.finding').count(), 1);
+  await shown(page, '1 de 7 achado(s) exibidos pelos filtros.');
+  assert.equal(await page.locator('.evidence a').getAttribute('href'), `https://github.com/example/small-app/blob/${sha}/src/a%20%23%3F.php#L1-L10`);
+  assert.equal(await page.locator('.evidence a').getAttribute('rel'), 'noopener noreferrer');
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.getByLabel('Severidade', { exact: true }).selectOption('critical');
+  await shown(page, 'Nenhum achado corresponde aos filtros'); assert.equal(await page.locator('.finding').count(), 0);
+  assert.equal(reads, 1);
 });
 
 test('unsupported status version is rejected and manual status refresh works', async t => {

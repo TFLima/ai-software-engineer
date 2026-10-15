@@ -58,6 +58,16 @@ export function canonicalRepository(value: string): string | null {
       !/^[A-Za-z0-9._-]{1,100}$/.test(name) || ['.', '..'].includes(name)) return null;
   return `https://github.com/${owner.toLowerCase()}/${name.toLowerCase()}`;
 }
+/** Link only to evidence from a validated public result and its immutable revision. */
+export function sourceUrl(repositoryUrl: string, sha: string, evidence: Evidence): string {
+  requireValue(canonicalRepository(repositoryUrl) === repositoryUrl && SHA.test(sha));
+  const segments = evidence.path.split('/');
+  requireValue([...evidence.path].length <= 512 && segments.length <= 12 &&
+    !/[\\\p{Cc}\p{Cf}\p{Cs}]/u.test(evidence.path) && !/^[A-Za-z]:/.test(evidence.path) &&
+    segments.every(segment => segment !== '' && segment !== '.' && segment !== '..'));
+  integer(evidence.start_line, 1); integer(evidence.end_line, evidence.start_line);
+  return `${repositoryUrl}/blob/${sha}/${segments.map(encodeURIComponent).join('/')}#L${evidence.start_line}-L${evidence.end_line}`;
+}
 /** Reject duplicate keys before JSON.parse, including nested objects. */
 export function strictJson(source: string): any {
   requireValue(new TextEncoder().encode(source).length <= 1048576);

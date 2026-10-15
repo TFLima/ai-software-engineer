@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalRepository, strictJson, decodeSubmission, decodeAnalysis, decodeFindings, publicErrorCode } from '../src/api.ts';
+import { canonicalRepository, strictJson, decodeSubmission, decodeAnalysis, decodeFindings, publicErrorCode, sourceUrl } from '../src/api.ts';
 import { id, sha, analysis, findings, apiError } from './fixtures.mjs';
 
 test('canonical public URLs and rejected source-controlled endpoints', () => {
@@ -24,4 +24,12 @@ test('findings enforce SHA, pagination, nested fields and bounded evidence witho
 test('safe public errors reject unexpected metadata', () => {
   assert.equal(publicErrorCode(JSON.stringify(apiError('admission_limited'))), 'admission_limited');
   const value = apiError('internal_error'); value.error.stack = 'private'; assert.throws(() => publicErrorCode(JSON.stringify(value)));
+});
+test('source links stay on the canonical repository and immutable SHA', () => {
+  const evidence = { path: 'src/a #?.php', start_line: 2, end_line: 4 };
+  assert.equal(sourceUrl('https://github.com/example/small-app', sha, evidence), `https://github.com/example/small-app/blob/${sha}/src/a%20%23%3F.php#L2-L4`);
+  for (const path of ['../secret', '/etc/passwd', 'a\\b', 'a//b', 'a/%2F/../b'])
+    assert.throws(() => sourceUrl('https://github.com/example/small-app', sha, { ...evidence, path }));
+  assert.throws(() => sourceUrl('https://github.com/example/small-app', 'main', evidence));
+  assert.throws(() => sourceUrl('https://evil.example/a/b', sha, evidence));
 });

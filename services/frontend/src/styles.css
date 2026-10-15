@@ -264,6 +264,37 @@ dd {
   background:#f1f4f2;
   border-radius:5px
 }
+.finding-filters {
+  display:flex;
+  flex-wrap:wrap;
+  gap:1rem;
+  margin-top:1.4rem
+}
+.finding-filters div {
+  display:grid;
+  gap:.4rem;
+  flex:1 1 12rem
+}
+.finding-filters select {
+  width:100%;
+  border:1px solid #a5b8ac;
+  border-radius:8px;
+  padding:.7rem;
+  font:inherit;
+  background:#fff;
+  color:inherit
+}
+.sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0
+}
 .severity[data-severity=high],.severity[data-severity=critical] {
   color:#96372b;
   background:#ffe9e4
@@ -290,6 +321,10 @@ dd {
 }
 .evidence code {
   font-size:.95em
+}
+.evidence a {
+  color:#245b44;
+  overflow-wrap:anywhere
 }
 .pagination {
   display:flex;

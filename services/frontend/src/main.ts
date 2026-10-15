@@ -1,8 +1,8 @@
-import { Component, DestroyRef, inject, provideZonelessChangeDetection, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, provideZonelessChangeDetection, signal } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { HttpClient, HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { Subscription, timeout } from 'rxjs';
-import { Analysis, FindingsPage, Status, UUID, canonicalRepository, decodeAnalysis, decodeFindings, decodeSubmission, publicErrorCode } from './api';
+import { Analysis, Evidence, FindingsPage, Status, UUID, canonicalRepository, decodeAnalysis, decodeFindings, decodeSubmission, publicErrorCode, sourceUrl } from './api';
 
 const STATUS: Record<Status, string> = { queued: 'Na fila', running: 'Em análise', completed: 'Concluída', failed: 'Falhou' };
 const CATEGORY: Record<string, string> = { architecture: 'Arquitetura', maintainability: 'Manutenção', reliability: 'Confiabilidade', security: 'Segurança', testing: 'Testes' };
@@ -41,6 +41,12 @@ export class AppComponent {
   readonly retryUntil = signal(0); readonly secondsLeft = signal(0);
   readonly requestedPage = signal(1);
   readonly perPage = 5;
+  readonly categoryFilter = signal(''); readonly severityFilter = signal('');
+  readonly categories = Object.entries(CATEGORY); readonly severities = Object.entries(SEVERITY);
+  readonly filteredFindings = computed(() => (this.page()?.data ?? []).filter(f =>
+    (!this.categoryFilter() || f.category === this.categoryFilter()) && (!this.severityFilter() || f.severity === this.severityFilter())));
+  readonly visibleFindings = computed(() => this.filteredFindings().slice((this.requestedPage() - 1) * this.perPage, this.requestedPage() * this.perPage));
+  readonly totalPages = computed(() => Math.ceil(this.filteredFindings().length / this.perPage));
   readonly statusLabel = STATUS; readonly categoryLabel = CATEGORY; readonly severityLabel = SEVERITY; readonly omissionLabel = OMISSION;
   private readonly http = inject(HttpClient);
   private readonly destroy = inject(DestroyRef);
@@ -108,6 +114,7 @@ export class AppComponent {
   private stopViewing(): void {
     this.viewVersion++; clearTimeout(this.pollTimer); this.statusRequest?.unsubscribe(); this.resultsRequest?.unsubscribe();
     this.analysis.set(null); this.analysisId.set(''); this.page.set(null); this.statusError.set(''); this.resultsError.set('');
+    this.categoryFilter.set(''); this.severityFilter.set(''); this.requestedPage.set(1);
     this.statusLoading.set(false); this.resultsLoading.set(false); this.paused.set(false);
   }
   private view(id: string): void {
@@ -125,7 +132,7 @@ export class AppComponent {
           this.statusLoading.set(false);
           try {
             const analysis = decodeAnalysis(response.body!, id); this.analysis.set(analysis); this.failures = 0;
-            if (analysis.status === 'completed') { if (!this.page()) this.loadPage(1); }
+            if (analysis.status === 'completed') { if (!this.page()) this.loadFindings(); }
             else if (analysis.status !== 'failed') this.schedulePoll(this.pollDelay);
           } catch { this.paused.set(true); this.statusError.set('A resposta de estado não pôde ser validada. Atualize para tentar novamente.'); }
         },
@@ -143,17 +150,26 @@ export class AppComponent {
     clearTimeout(this.pollTimer); this.pollTimer = setTimeout(() => this.readStatus(), delay);
     this.pollDelay = Math.min(this.pollDelay * 2, 10000);
   }
+  setCategory(event: Event): void { this.categoryFilter.set((event.target as HTMLSelectElement).value); this.requestedPage.set(1); }
+  setSeverity(event: Event): void { this.severityFilter.set((event.target as HTMLSelectElement).value); this.requestedPage.set(1); }
   loadPage(number: number): void {
+    if (number >= 1 && number <= this.totalPages()) this.requestedPage.set(number);
+  }
+  evidenceUrl(evidence: Evidence): string {
+    const analysis = this.analysis()!;
+    return sourceUrl(analysis.repository.url, analysis.commit_sha!, evidence);
+  }
+  loadFindings(): void {
     const analysis = this.analysis();
     if (!analysis || analysis.status !== 'completed' || !analysis.commit_sha || this.resultsLoading()) return;
-    const version = this.viewVersion; this.requestedPage.set(number); this.resultsLoading.set(true); this.resultsError.set('');
+    const version = this.viewVersion; this.resultsLoading.set(true); this.resultsError.set('');
     this.resultsRequest = this.http.get(`/api/analyses/${analysis.id}/findings`, {
-      headers: { Accept: 'application/json' }, params: { page: number, per_page: this.perPage }, observe: 'response', responseType: 'text',
+      headers: { Accept: 'application/json' }, params: { page: 1, per_page: 20 }, observe: 'response', responseType: 'text',
     }).pipe(timeout(10000)).subscribe({
       next: response => {
         if (version !== this.viewVersion) return;
         this.resultsLoading.set(false);
-        try { this.page.set(decodeFindings(response.body!, analysis.id, analysis.commit_sha!, number, this.perPage)); }
+        try { this.page.set(decodeFindings(response.body!, analysis.id, analysis.commit_sha!, 1, 20)); }
         catch { this.resultsError.set('Os resultados não puderam ser validados. Nenhum conteúdo desta resposta foi exibido.'); }
       },
       error: error => { if (version !== this.viewVersion) return; this.resultsLoading.set(false); this.resultsError.set(this.errorMessage(error, 'Não foi possível carregar os achados. Tente novamente.')); },
