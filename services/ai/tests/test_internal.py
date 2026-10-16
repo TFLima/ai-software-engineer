@@ -36,7 +36,7 @@ def test_auth_before_body_validation(client):
         assert response.json() == {"schema_version": 1, "error": {"code": "unauthorized_internal", "stage": "request", "retryable": False}}
 
 
-def test_valid_request_fails_closed_without_pipeline(client, payload):
+def test_valid_request_fails_closed_without_provider_configuration(client, payload):
     payload["commit_sha"] = "a" * 40
     response = client.post("/internal/v1/analyses:run", json=payload, headers=HEADERS)
     assert response.status_code == 500

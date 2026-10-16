@@ -1,4 +1,4 @@
-"""Authenticated B04 boundary; the executable analysis pipeline arrives in B05–B10."""
+"""Authenticated internal boundary for the fixed analysis pipeline."""
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -11,9 +11,19 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.limits import CEILINGS
+from app.orchestrator import AnalysisOrchestrator
+from app.operations import CORRELATION, cleanup_stale, event, workspace_root
 
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
+
+
+async def cleanup_when_idle(application):
+    async with application.state.slot:
+        try:
+            await asyncio.to_thread(cleanup_stale)
+        except (OSError, RuntimeError):
+            event('stale_workspace_cleanup', code='snapshot_cleanup_failed')
 
 
 @asynccontextmanager
@@ -23,7 +33,24 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("Internal authentication configuration is missing")
     app.state.secret = secret
     app.state.slot = asyncio.Lock()
-    yield
+    workspace_root()
+    app.state.orchestrator = AnalysisOrchestrator()
+    # Complete initial maintenance before readiness to avoid a startup overload race.
+    await cleanup_when_idle(app)
+
+    async def sweep():
+        while True:
+            await asyncio.sleep(300)
+            await cleanup_when_idle(app)
+    cleaner = asyncio.create_task(sweep())
+    try:
+        yield
+    finally:
+        cleaner.cancel()
+        try:
+            await cleaner
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="Internal AI service", docs_url=None, redoc_url=None,
@@ -137,6 +164,9 @@ async def run(request: Request):
     if request.app.state.slot.locked():
         return JSONResponse(status_code=503, content=failure(payload, "upstream_unavailable", retryable=True))
     async with request.app.state.slot:
-        # Fail closed until RepositoryReader and the B10 pipeline are implemented.
-        # This endpoint performs no source/provider calls and never fabricates findings.
-        return JSONResponse(status_code=500, content=failure(payload, "configuration_error"))
+        token = CORRELATION.set({key: payload[key] for key in ('analysis_id', 'attempt_id')})
+        try:
+            status, result = await request.app.state.orchestrator.run(payload)
+            return JSONResponse(status_code=status, content=result)
+        finally:
+            CORRELATION.reset(token)

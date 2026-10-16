@@ -289,6 +289,23 @@ final class QueueHandoffTest extends TestCase
         }
     }
 
+    public function test_python_orchestrator_fixture_is_revalidated_and_persisted_once(): void
+    {
+        $id = $this->submit();
+        $lifecycle = app(Lifecycle::class);
+        $request = $lifecycle->claim($id);
+        $result = json_decode(file_get_contents(__DIR__.'/../Fixtures/b10-success.json'), true, 32, JSON_THROW_ON_ERROR);
+        $result['analysis_id'] = $request['analysis_id'];
+        $result['attempt_id'] = $request['attempt_id'];
+        $validated = $this->validated($request, $result);
+        self::assertTrue($lifecycle->accept($request, $validated));
+        self::assertFalse($lifecycle->accept($request, $validated));
+        $this->assertDatabaseCount('findings', 1);
+        $this->assertDatabaseHas('analysis_attempts', ['id' => $request['attempt_id'], 'status' => 'succeeded']);
+        $this->getJson("/api/analyses/$id")->assertOk()->assertJsonPath('status', 'completed');
+        $this->getJson("/api/analyses/$id/findings")->assertOk()->assertJsonCount(1, 'data');
+    }
+
     public function test_timeout_ordering_is_checked(): void
     {
         $limits = config('analysis.limits');

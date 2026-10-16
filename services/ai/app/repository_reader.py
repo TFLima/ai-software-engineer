@@ -4,7 +4,6 @@ import asyncio
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import json
-import logging
 import os
 import re
 import shutil
@@ -16,9 +15,9 @@ from urllib.parse import quote, urljoin
 from app.acquisition import AcquisitionBudget, AcquisitionError
 from app.github_transport import GitHubTransport, target
 from app.snapshot import extract
+from app.operations import event, workspace_root
 
 SHA = re.compile(r"[0-9a-f]{40}\Z")
-LOG = logging.getLogger(__name__)
 
 
 def identity(repository):
@@ -79,12 +78,12 @@ class RepositoryReader:
 
     @asynccontextmanager
     async def snapshot(self, repository: dict, commit_sha: str | None, limits: dict,
-                       deadline: datetime):
+                       deadline: datetime, on_sha=None):
         owner, name = identity(repository)
         if commit_sha is not None and (type(commit_sha) is not str or not SHA.fullmatch(commit_sha)):
             raise AcquisitionError("invalid_request")
         budget = AcquisitionBudget.start(limits, deadline)
-        workspace = Path(tempfile.mkdtemp(prefix="ase-snapshot-", dir=self.workspace_parent))
+        workspace = Path(tempfile.mkdtemp(prefix="ase-snapshot-", dir=self.workspace_parent if self.workspace_parent is not None else workspace_root()))
         try:
             root = workspace / "source"
             root.mkdir(mode=0o700)
@@ -103,6 +102,8 @@ class RepositoryReader:
                 commit_sha = head.get("sha")
                 if type(commit_sha) is not str or not SHA.fullmatch(commit_sha):
                     raise AcquisitionError("repository_unavailable")
+            if on_sha is not None:
+                on_sha(commit_sha)
             archive = workspace / "archive.tar.gz"
             url = f"https://codeload.github.com/{owner}/{name}/tar.gz/{commit_sha}"
             await self.download(url, archive, budget)
@@ -118,7 +119,7 @@ class RepositoryReader:
                                        timeout=limits["cleanup_seconds"])
             except (OSError, TimeoutError):
                 # B12 owns scheduled stale cleanup. Never leak source paths or exception text.
-                LOG.error("snapshot_cleanup_failed", extra={"code": "snapshot_cleanup_failed"})
+                event("snapshot_cleanup_failed", code="snapshot_cleanup_failed")
 
     async def metadata(self, url, budget):
         data = await self.fetch(url, budget, 1048576)

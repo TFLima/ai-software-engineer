@@ -1,9 +1,9 @@
-# Local service stack (B02–B04)
+# Local service stack (MVP 0.1)
 
 B02 supplies infrastructure and operational health. B03 adds analysis, attempt and
 finding tables plus the Laravel submission/status/findings API. B04 adds Redis jobs,
 bounded attempts, an authenticated internal boundary and a reconciliation scheduler.
-Repository acquisition, provider calls, embeddings, RAG and the submission UI remain planned.
+B05–B09 implement acquisition, selection, context, provider and finding validation. B10 integrates them, B11 adds the Angular analysis flow and B12 adds operational controls. Provider calls remain disabled by default; see [B08 configuration and validation](b08-validation.md). Embeddings and RAG remain outside MVP 0.1.
 The normative [B01 contracts](../contracts/README.md) remain unchanged.
 
 ## Prerequisites and environment
@@ -28,7 +28,7 @@ The generator creates an ignored `.env` with mode 0600 and independent random
 `APP_KEY` (Laravel AES-256 key), `DB_PASSWORD` (PostgreSQL password), and
 `AI_INTERNAL_SECRET` (worker/FastAPI bearer secret). It refuses
 to overwrite an existing file and never prints credentials. `.env.example` lists
-the required variables with empty values; Compose rejects missing/empty values.
+the required stack secrets with empty values and standalone B08 provider settings; Compose rejects missing/empty stack secrets.
 Do not paste real credentials into tracked files. Avoid publishing `docker compose
 config` or container inspection output containing environment values.
 
@@ -51,12 +51,9 @@ restart the stack after adding it.
 
 ## URLs, topology and health
 
-Open <http://localhost:8080> or <http://127.0.0.1:8080>. The Angular page reports
-application readiness using same-origin `GET /api/health`; it offers no analysis
-workflow. B03 API clients can submit a public GitHub URL to `POST /api/analyses`
+Open <http://localhost:8080> or <http://127.0.0.1:8080>. The Angular page offers URL submission with source-transmission disclosure, bounded status polling and paginated results. B03 API clients can submit a public GitHub URL to `POST /api/analyses`
 with JSON and an `Idempotency-Key`, then read `GET /api/analyses/{id}`. Submitted
-analyses are delivered to the internal service. Until B10 supplies the pipeline,
-the boundary returns terminal `configuration_error` without source/provider work. Host port 8080 and its two exact loopback origins are intentional local
+analyses are delivered to the internal service. With generation disabled, the pipeline returns terminal `configuration_error` before source/provider work. Host port 8080 and its two exact loopback origins are intentional local
 settings. Changing the port requires changing the edge Host/Origin allowlists,
 `APP_URL`, verification script and documentation together.
 
@@ -154,7 +151,7 @@ Laravel tests cover health, B03 submission/idempotency/read APIs and B04 claims,
 retry caps, reconciliation, internal responses, stale fences and atomic persistence. Run them only against an isolated database named
 `ai_software_engineer_test`; the suite refuses to reset another database.
 FastAPI tests cover health, authentication, strict requests, ceilings, deadlines,
-overload and the deliberately unavailable pipeline; docs remain disabled. With local
+overload and the B10 pipeline with simulated GitHub and fake generation; docs remain disabled. With local
 PHP 8.3+ and extensions available, use `composer install` and `composer test` in
 `services/backend` with `DB_DATABASE=ai_software_engineer_test` and a separate
 PostgreSQL test database. With Python 3.12, create a virtualenv, install
@@ -219,3 +216,37 @@ policy/schema failures. See [B04 behavior and validation](b04-validation.md).
 
 Laravel bootstrap sessions/cache use
 in-memory stores; B02 creates no session/cache/queue tables.
+
+## Browser analysis flow (B11)
+
+Open `http://127.0.0.1:8080`, enter a public GitHub URL and acknowledge the
+source-transmission disclosure. The UI follows queued/running/completed/failed,
+shows SHA/coverage and displays completed findings in pages of five. With the
+default disabled provider configuration, the analysis fails safely with an
+actionable configuration message. See [B10 provider setup](b10-validation.md)
+and [B11 behavior and verification](b11-validation.md).
+
+After updating frontend code, rebuild/recreate the frontend through
+`docker compose up -d --build`. Each analysis has a local hash link such as
+`http://127.0.0.1:8080/#analysis/<id>`; reloading it resumes reads without
+resubmitting. Frontend-only checks run from `services/frontend`:
+
+```sh
+npm ci --no-audit --no-fund
+npm test
+npx playwright install chromium --only-shell
+npm run test:browser
+```
+
+Contract tests need Node 22.18+ (native TypeScript stripping). Browser tests
+serve the production build on loopback and mock the public API; no repository or
+provider calls are made. Playwright is a development-only dependency. The runtime
+frontend image serves built assets; it does not run tests or contain credentials.
+
+## Operations and data lifecycle (B12)
+
+Terminal results are retained for 30 days by default (`ANALYSIS_RETENTION_DAYS`), then removed hourly with their attempts, findings and idempotency records. Active work is preserved. Use `analyses:inspect <analysis-id>` on the scheduler for safe queue age, timings, errors and usage; `analyses:purge` for expired results or `analyses:purge --id=<analysis-id>` for explicit terminal deletion. AI snapshots are cleaned immediately and orphan workspaces older than one hour are swept every five minutes. See [B12 policy, recovery and verification](b12-validation.md).
+
+## Integrated acceptance (B13)
+
+Run `python3 scripts/verify-mvp.py` with Docker/Compose and the frontend Playwright prerequisites. It creates a disposable test project and database, runs backend regressions, verifies topology and exercises real browser submissions with replayed public source/fake generation. It removes only its own test volumes afterward. See [B13 evidence and release gates](b13-validation.md); a successful component test run does not close native integrated acceptance.

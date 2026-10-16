@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/octocat/hello-world",
+  "commit_sha": "7fd1a60b01f91b314f59955a4e4d4e80d8edf11d",
+  "archive_url": "https://codeload.github.com/octocat/Hello-World/tar.gz/7fd1a60b01f91b314f59955a4e4d4e80d8edf11d",
+  "archive_sha256": "39a4b97b9d108782fa7466b07160a2c9227a7da07725ad4110c41be6014e4160",
+  "archive_bytes": 261,
+  "files": [{"path": "README", "bytes": 13, "lines": 1}],
+  "source_capture_date": "2026-10-14",
+  "generation": "deterministic fake; no paid model call",
+  "limitations": ["One-line public repository exercises wiring, not realistic model quality", "Scenario variants are synthetic and are not representations of real GitHub repositories"]
+}

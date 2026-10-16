@@ -32,7 +32,7 @@ def request(path, *, headers=None, expected=200, method="GET"):
         return response.read().decode()
 
 
-def main():
+def main(database="ai_software_engineer"):
     config = json.loads(compose("config", "--format", "json"))
     assert set(config["services"]) == EXPECTED
     assert [name for name, service in config["services"].items() if service.get("ports")] == ["nginx"]
@@ -77,7 +77,7 @@ def main():
     assert json.loads(ai) == {"status": "ok", "service": "ai"}
     assert compose("exec", "-T", "redis", "redis-cli", "ping") == "PONG"
     sql = "SELECT 1; SELECT name FROM pg_available_extensions WHERE name = 'vector'; SELECT count(*) FROM pg_extension WHERE extname = 'vector';"
-    assert compose("exec", "-T", "postgres", "psql", "-U", "ai_software_engineer", "-d", "ai_software_engineer", "-Atc", sql).splitlines() == ["1", "vector", "0"]
+    assert compose("exec", "-T", "postgres", "psql", "-U", "ai_software_engineer", "-d", database, "-Atc", sql).splitlines() == ["1", "vector", "0"]
     compose("exec", "-T", "worker", "php", "worker-health.php")
     print("PASS internal: FastAPI reachable from worker, Redis PONG, PostgreSQL SQL, pgvector available and unused, worker alive")
 
