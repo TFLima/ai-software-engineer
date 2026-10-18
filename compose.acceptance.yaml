@@ -27,5 +27,9 @@ services:
     command: [python, -m, uvicorn, acceptance_app:app, --app-dir, /app/tests/support, --host, 0.0.0.0, --port, "8000", --workers, "1", --no-access-log]
     environment:
       LLM_REAL_ENABLED: "false"
+      LLM_PROVIDER: "openai"
+      LLM_FAKE_ENABLED: "false"
+      ANTHROPIC_API_KEY: ""
+      ANTHROPIC_SOURCE_DISCLOSURE_ACKNOWLEDGED: "false"
       OPENAI_API_KEY: ""
       LLM_SOURCE_DISCLOSURE_ACKNOWLEDGED: "false"

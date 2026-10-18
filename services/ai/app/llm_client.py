@@ -98,11 +98,17 @@ class CostPolicy:
     call_microusd: int = 20_000
     attempt_microusd: int = 40_000
 
+    call_ceiling_microusd: int = 20_000
+    attempt_ceiling_microusd: int = 40_000
+
     def validate(self):
         values = (self.input_microusd_per_million, self.output_microusd_per_million,
-                  self.call_microusd, self.attempt_microusd)
+                  self.call_microusd, self.attempt_microusd,
+                  self.call_ceiling_microusd, self.attempt_ceiling_microusd)
         if (any(type(v) is not int or v <= 0 for v in values)
-                or self.call_microusd > 20_000 or self.attempt_microusd > 40_000
+                or self.call_microusd > self.call_ceiling_microusd
+                or self.attempt_microusd > self.attempt_ceiling_microusd
+                or self.call_ceiling_microusd > self.attempt_ceiling_microusd
                 or self.call_microusd > self.attempt_microusd):
             raise LLMError("configuration_error")
 

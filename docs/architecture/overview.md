@@ -51,7 +51,7 @@ For 0.1 the internal FastAPI call is synchronous inside the asynchronous Laravel
 | `LLMClient` | Prompt/context + output schema → candidate JSON + usage metadata | Platform-owned interface with provider details behind an adapter; bounded timeout/retries; no tools |
 | `FindingValidator` | Candidate JSON + evidence map → validated findings or errors | Rejects unsupported evidence and malformed payloads; cannot establish semantic truth |
 
-Use ordinary interfaces and typed request/result objects. The pipeline depends on the platform-owned `LLMClient` interface, not a provider SDK. Implement one real provider adapter and a fake adapter for deterministic tests; keep provider-specific request/response details inside the adapter and the core finding contract provider-independent ([ADR 0007](adr/0007-llm-provider-abstraction.md)). Inject provider and repository adapters so tests can use fixtures and a fake LLM. Do not introduce a general plugin registry, agent framework, or workflow engine in 0.1.
+Use ordinary interfaces and typed request/result objects. The pipeline depends on the platform-owned `LLMClient` interface, not a provider SDK. Implement explicitly configured OpenAI and Anthropic adapters plus a gated development/test fake ([ADR 0008](adr/0008-configured-llm-providers.md)); keep provider-specific request/response details inside the adapter and the core finding contract provider-independent ([ADR 0007](adr/0007-llm-provider-abstraction.md)). Inject provider and repository adapters so tests can use fixtures and a fake LLM. Do not introduce a general plugin registry, agent framework, or workflow engine in 0.1.
 
 ## Proposed API and data contracts
 

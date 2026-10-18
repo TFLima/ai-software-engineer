@@ -9,7 +9,7 @@ from app.context_builder import ContextBuilder, ContextError
 from app.file_selector import FileSelector, SelectionError
 from app.finding_validator import FindingValidator, FindingError
 from app.llm_client import GenerationRequest, LLMError, TRANSIENT
-from app.openai_llm import openai_client_from_env
+from app.llm_factory import llm_client_from_env
 from app.repository_reader import RepositoryReader
 from app.operations import event
 
@@ -23,7 +23,7 @@ def status_for(code):
 
 
 class AnalysisOrchestrator:
-    def __init__(self, reader=None, client_factory=openai_client_from_env,
+    def __init__(self, reader=None, client_factory=llm_client_from_env,
                  selector=None, builder=None, validator=None):
         self.reader = reader or RepositoryReader()
         self.client_factory = client_factory
