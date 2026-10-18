@@ -247,3 +247,26 @@ def test_unrequested_billable_features_rejected_with_usage(metadata):
         run(client(lambda _: httpx.Response(200, json=body(usage={
             'input_tokens': 100, 'output_tokens': 20, **metadata}))).generate(request()))
     assert caught.value.usage == Usage(100, 20)
+
+
+@pytest.mark.parametrize("diagnostics", [None, {}, {"cache_miss_reason": None}])
+def test_observed_nullable_metadata_and_unavailable_geo(diagnostics):
+    envelope = body(container=None, diagnostics=diagnostics, stop_details=None, usage={
+        "input_tokens": 1487, "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0},
+        "output_tokens": 16, "service_tier": "standard",
+        "inference_geo": "not_available", "speed": "standard"})
+    result = run(client(lambda _: httpx.Response(200, json=envelope)).generate(request()))
+    assert result.candidate_json == EMPTY and result.usage == Usage(1487, 16)
+
+
+@pytest.mark.parametrize("metadata", [
+    {"container": {}}, {"container": {"id": "unsolicited"}},
+    {"diagnostics": []}, {"diagnostics": {"unknown": True}},
+    {"diagnostics": {"cache_miss_reason": {"type": "unrequested"}}},
+    {"usage": {"input_tokens": 100, "output_tokens": 20, "inference_geo": "unexpected"}},
+])
+def test_nullable_metadata_does_not_admit_unrequested_features(metadata):
+    with pytest.raises(LLMError, match="invalid_result"):
+        run(client(lambda _: httpx.Response(200, json=body(**metadata))).generate(request()))

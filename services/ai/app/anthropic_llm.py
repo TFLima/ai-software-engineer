@@ -161,9 +161,17 @@ class AnthropicAdapter:
             value = json.loads(body.decode("utf-8"), object_pairs_hook=_no_duplicates,
                                parse_constant=_reject_constant)
             if (type(value) is not dict or value.keys() - {
-                    "id", "type", "role", "model", "content", "stop_reason", "stop_sequence", "stop_details", "usage"}
+                    "id", "type", "role", "model", "content", "stop_reason", "stop_sequence", "stop_details", "usage", "container", "diagnostics"}
                     or value.get("type") != "message" or value.get("role") != "assistant"
                     or value.get("model") != self.model):
+                raise ValueError()
+            # Nullable metadata is emitted even when no execution was requested.
+            if value.get("container") is not None:
+                raise ValueError()
+            diagnostics = value.get("diagnostics")
+            if diagnostics is not None and (type(diagnostics) is not dict
+                    or diagnostics.keys() - {"cache_miss_reason"}
+                    or diagnostics.get("cache_miss_reason") is not None):
                 raise ValueError()
             counters = value["usage"]
             if (type(counters) is not dict or not {"input_tokens", "output_tokens"} <= counters.keys()
@@ -179,7 +187,7 @@ class AnthropicAdapter:
             # Caching, server tools and premium service tiers were never requested.
             if (counters.get("cache_creation_input_tokens", 0)
                     or counters.get("service_tier") not in (None, "standard")
-                    or counters.get("inference_geo") not in (None, "global")
+                    or counters.get("inference_geo") not in (None, "global", "not_available")
                     or counters.get("speed") not in (None, "standard")):
                 raise LLMError("invalid_result", usage)
             for name, allowed in (

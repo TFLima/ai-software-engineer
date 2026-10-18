@@ -231,3 +231,26 @@ mock-verified until authorized real homologation.
 - `scripts/compare-llm-providers.py`: opt-in pinned-SHA paid comparison procedure.
 - `README.md`, `docs/architecture/overview.md`, ADR index, ADR 0007 supersession note and ADR 0008: scope and decision documentation.
 - This validation record: setup, sources, budgets, evidence and pending gates.
+
+## Homologation follow-up: response metadata compatibility (2026-10-18)
+
+User-run paid diagnostic reported HTTP 200, end_turn, text-only content and usage
+1487 input / 16 output tokens, with envelope keys container/diagnostics and
+inference_geo=not_available. The previous translator rejected both new envelope
+keys and that geographic sentinel. This was an adapter compatibility defect,
+not evidence of invalid finding JSON. The submitted diagnostic did not disclose
+the actual container/diagnostics values; reproduction tests use their nullable
+forms. The official Messages reference documents container and diagnostics as
+provider metadata; not_available is admitted as the observed unavailable-region
+sentinel, not a claim of a geographic processing guarantee.
+
+The correction accepts absent/null container, absent/null/empty diagnostics or
+cache_miss_reason=null, and unavailable geography. Non-null execution containers,
+nonempty diagnostics, unknown metadata and unrequested paid features still fail
+closed. Candidate JSON and FindingValidator are unchanged. Added three success
+fixtures and six negative regressions. No additional paid calls executed by the
+assistant; a full successful user-run application analysis remains pending.
+
+Follow-up validation: full Python suite `python -m pytest -q -p no:cacheprovider`
+in services/ai: **412 passed**, existing AnyIO warning. compileall and
+`git diff --check` passed. No Laravel/frontend code changed in this follow-up.
