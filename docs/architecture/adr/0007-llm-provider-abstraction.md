@@ -2,6 +2,9 @@
 
 Status: Accepted (Phase 0 planning). Date: 2026-09-28.
 
+Provider-count restriction superseded by [ADR 0008](0008-configured-llm-providers.md),
+authorized 2026-10-18. Original decision text is retained below.
+
 ## Context
 
 The platform may later evaluate other hosted or local models. Coupling orchestration or finding contracts to one provider SDK would make those comparisons harder and would complicate deterministic tests. MVP 0.1 needs only one real provider integration.

@@ -27,6 +27,7 @@ class OpenAIConfig:
     data_policy: str = ""
     source_disclosure_acknowledged: bool = False
     cost: CostPolicy = CostPolicy()
+    max_output_tokens: int = 32_768
 
     def validate(self):
         self.cost.validate()
@@ -35,22 +36,31 @@ class OpenAIConfig:
                 or self.model != MODEL or type(self.context_window) is not int
                 or self.context_window != 1_047_576 or self.data_policy != DATA_POLICY
                 or self.source_disclosure_acknowledged is not True
+                or type(self.max_output_tokens) is not int or not 0 < self.max_output_tokens <= 32_768
                 or self.cost.input_microusd_per_million < 400_000
                 or self.cost.output_microusd_per_million < 1_600_000):
             raise LLMError("configuration_error")
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None):
-        env = os.environ if environ is None else environ
+        env = dict(os.environ if environ is None else environ)
+        for suffix in ("MODEL", "CONTEXT_WINDOW", "DATA_POLICY", "SOURCE_DISCLOSURE_ACKNOWLEDGED",
+                       "INPUT_MICROUSD_PER_MILLION", "OUTPUT_MICROUSD_PER_MILLION",
+                       "CALL_MICROUSD", "ATTEMPT_MICROUSD"):
+            if "OPENAI_" + suffix in env and env["OPENAI_" + suffix]:
+                env["LLM_" + suffix] = env["OPENAI_" + suffix]
         try:
             if env.get("LLM_REAL_ENABLED", "false") != "true":
                 raise ValueError()
             cost = CostPolicy(*(int(env[name]) for name in (
                 "LLM_INPUT_MICROUSD_PER_MILLION", "LLM_OUTPUT_MICROUSD_PER_MILLION",
-                "LLM_CALL_MICROUSD", "LLM_ATTEMPT_MICROUSD")))
+                "LLM_CALL_MICROUSD", "LLM_ATTEMPT_MICROUSD")),
+                call_ceiling_microusd=int(env.get("LLM_CALL_CEILING_MICROUSD", 20_000)),
+                attempt_ceiling_microusd=int(env.get("LLM_ATTEMPT_CEILING_MICROUSD", 40_000)))
             config = cls(True, env["OPENAI_API_KEY"], env["LLM_MODEL"],
                          int(env["LLM_CONTEXT_WINDOW"]), env["LLM_DATA_POLICY"],
-                         env.get("LLM_SOURCE_DISCLOSURE_ACKNOWLEDGED") == "true", cost)
+                         env.get("LLM_SOURCE_DISCLOSURE_ACKNOWLEDGED") == "true", cost,
+                         int(env.get("OPENAI_MAX_OUTPUT_TOKENS", 32_768)))
             config.validate()
             return config
         except (KeyError, ValueError, TypeError, LLMError):
@@ -116,6 +126,7 @@ class OpenAIAdapter:
         config.validate()
         self._config = config
         self.cost_policy = config.cost
+        self.max_output_tokens = config.max_output_tokens
         # Transport injection is for deterministic tests. The runtime path uses
         # httpx's verified TLS and session proxy; redirects and retries stay off.
         self._transport = transport
